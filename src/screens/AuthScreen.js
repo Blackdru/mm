@@ -12,6 +12,8 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import {useAuth} from '../context/AuthContext';
+import { theme, commonStyles } from '../styles/theme';
+import GradientBackground from '../components/GradientBackground';
 
 const AuthScreen = ({navigation}) => {
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -101,212 +103,272 @@ const AuthScreen = ({navigation}) => {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Welcome to Budzee</Text>
-          <Text style={styles.subtitle}>
-            {step === 'phone'
-              ? 'Enter your mobile number to get started'
-              : 'Enter the OTP sent to your mobile'}
-          </Text>
-        </View>
+    <GradientBackground>
+      <KeyboardAvoidingView
+        style={commonStyles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <ScrollView 
+          contentContainerStyle={styles.scrollContainer}
+          showsVerticalScrollIndicator={false}>
+          
+          {/* App Header */}
+          <View style={styles.header}>
+            <View style={styles.logoContainer}>
+              <Text style={styles.logoEmoji}>🎮</Text>
+              <Text style={styles.title}>BUDZEE</Text>
+              <Text style={styles.tagline}>Gaming Arena</Text>
+            </View>
+            <Text style={styles.subtitle}>
+              {step === 'phone'
+                ? 'Enter your mobile number to join the game!'
+                : 'Enter the OTP sent to your mobile'}
+            </Text>
+          </View>
 
-        <View style={styles.form}>
-          {step === 'phone' ? (
-            <>
-              <Text style={styles.label}>Mobile Number</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter 10-digit mobile number"
-                value={phoneNumber}
-                onChangeText={(text) => setPhoneNumber(formatPhoneNumber(text))}
-                keyboardType="phone-pad"
-                maxLength={13}
-                editable={!loading}
-              />
-              <TouchableOpacity
-                style={[styles.button, loading && styles.buttonDisabled]}
-                onPress={handleSendOTP}
-                disabled={loading}>
-                {loading ? (
-                  <ActivityIndicator color="#ffffff" />
-                ) : (
-                  <Text style={styles.buttonText}>Send OTP</Text>
-                )}
-              </TouchableOpacity>
-            </>
-          ) : (
-            <>
-              <Text style={styles.label}>Enter OTP</Text>
-              <Text style={styles.phoneDisplay}>{phoneNumber}</Text>
-              <TextInput
-                style={styles.otpInput}
-                placeholder="000000"
-                value={otp}
-                onChangeText={setOtp}
-                keyboardType="number-pad"
-                maxLength={6}
-                editable={!loading}
-                textAlign="center"
-              />
-              
-              <TouchableOpacity
-                style={[styles.button, loading && styles.buttonDisabled]}
-                onPress={handleVerifyOTP}
-                disabled={loading}>
-                {loading ? (
-                  <ActivityIndicator color="#ffffff" />
-                ) : (
-                  <Text style={styles.buttonText}>Verify OTP</Text>
-                )}
-              </TouchableOpacity>
+          {/* Form Card */}
+          <View style={[commonStyles.card, styles.formCard]}>
+            <View style={styles.formHeader}>
+              <Text style={styles.formTitle}>
+                {step === 'phone' ? '📱 Phone Verification' : '🔐 OTP Verification'}
+              </Text>
+            </View>
 
-              <View style={styles.resendContainer}>
-                {timer > 0 ? (
-                  <Text style={styles.timerText}>
-                    Resend OTP in {timer} seconds
-                  </Text>
-                ) : (
-                  <TouchableOpacity onPress={handleResendOTP}>
-                    <Text style={styles.resendText}>Resend OTP</Text>
-                  </TouchableOpacity>
-                )}
+            {step === 'phone' ? (
+              <>
+                <Text style={styles.label}>Mobile Number</Text>
+                <TextInput
+                  style={commonStyles.input}
+                  placeholder="Enter 10-digit mobile number"
+                  placeholderTextColor={theme.colors.textLight}
+                  value={phoneNumber}
+                  onChangeText={(text) => setPhoneNumber(formatPhoneNumber(text))}
+                  keyboardType="phone-pad"
+                  maxLength={13}
+                  editable={!loading}
+                />
+                
+                <TouchableOpacity
+                  style={[commonStyles.button, loading && styles.buttonDisabled]}
+                  onPress={handleSendOTP}
+                  disabled={loading}>
+                  {loading ? (
+                    <ActivityIndicator color={theme.colors.textPrimary} size="small" />
+                  ) : (
+                    <Text style={commonStyles.buttonText}>🚀 Send OTP</Text>
+                  )}
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <Text style={styles.label}>Enter OTP</Text>
+                <Text style={styles.phoneDisplay}>📱 {phoneNumber}</Text>
+                
+                <TextInput
+                  style={[commonStyles.input, styles.otpInput]}
+                  placeholder="000000"
+                  placeholderTextColor={theme.colors.textLight}
+                  value={otp}
+                  onChangeText={setOtp}
+                  keyboardType="number-pad"
+                  maxLength={6}
+                  editable={!loading}
+                  textAlign="center"
+                />
+                
+                <TouchableOpacity
+                  style={[commonStyles.button, loading && styles.buttonDisabled]}
+                  onPress={handleVerifyOTP}
+                  disabled={loading}>
+                  {loading ? (
+                    <ActivityIndicator color={theme.colors.textPrimary} size="small" />
+                  ) : (
+                    <Text style={commonStyles.buttonText}>✅ Verify & Continue</Text>
+                  )}
+                </TouchableOpacity>
+
+                <View style={styles.resendContainer}>
+                  {timer > 0 ? (
+                    <Text style={styles.timerText}>
+                      ⏱️ Resend OTP in {timer} seconds
+                    </Text>
+                  ) : (
+                    <TouchableOpacity onPress={handleResendOTP} style={styles.resendButton}>
+                      <Text style={styles.resendText}>🔄 Resend OTP</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+
+                <TouchableOpacity
+                  style={styles.backButton}
+                  onPress={() => setStep('phone')}>
+                  <Text style={styles.backButtonText}>← Change Number</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+
+          {/* Features */}
+          <View style={styles.footer}>
+            <View style={styles.featuresContainer}>
+              <View style={styles.feature}>
+                <Text style={styles.featureIcon}>🏆</Text>
+                <Text style={styles.featureText}>Win Real Money</Text>
               </View>
-
-              <TouchableOpacity
-                style={styles.backButton}
-                onPress={() => setStep('phone')}>
-                <Text style={styles.backButtonText}>Change Number</Text>
-              </TouchableOpacity>
-            </>
-          )}
-        </View>
-
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>
-            By continuing, you agree to our Terms of Service and Privacy Policy
-          </Text>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+              <View style={styles.feature}>
+                <Text style={styles.featureIcon}>⚡</Text>
+                <Text style={styles.featureText}>Instant Payouts</Text>
+              </View>
+              <View style={styles.feature}>
+                <Text style={styles.featureIcon}>🔒</Text>
+                <Text style={styles.featureText}>100% Secure</Text>
+              </View>
+            </View>
+            
+            <Text style={styles.footerText}>
+              By continuing, you agree to our Terms of Service and Privacy Policy
+            </Text>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </GradientBackground>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8f9fa',
-  },
   scrollContainer: {
     flexGrow: 1,
     justifyContent: 'center',
-    padding: 20,
+    padding: theme.spacing.md,
+    minHeight: theme.screen.height * 0.9,
   },
   header: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: theme.spacing.lg,
+  },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: theme.spacing.md,
+  },
+  logoEmoji: {
+    fontSize: 48,
+    marginBottom: theme.spacing.xs,
   },
   title: {
-    fontSize: 32,
+    fontSize: theme.fonts.sizes.xxxl,
     fontWeight: 'bold',
-    color: '#2c3e50',
-    marginBottom: 10,
+    color: theme.colors.primary,
+    marginBottom: theme.spacing.xs,
+    letterSpacing: 2,
+    textShadowColor: 'rgba(255, 107, 53, 0.3)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+  },
+  tagline: {
+    fontSize: theme.fonts.sizes.md,
+    color: theme.colors.accent,
+    fontWeight: '600',
+    letterSpacing: 1,
   },
   subtitle: {
-    fontSize: 16,
-    color: '#7f8c8d',
+    fontSize: theme.fonts.sizes.md,
+    color: theme.colors.textSecondary,
     textAlign: 'center',
-    lineHeight: 22,
+    lineHeight: 20,
+    marginTop: theme.spacing.sm,
   },
-  form: {
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 24,
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+  formCard: {
+    borderWidth: 2,
+    borderColor: 'rgba(255, 107, 53, 0.2)',
+    marginBottom: theme.spacing.md,
+  },
+  formHeader: {
+    alignItems: 'center',
+    marginBottom: theme.spacing.md,
+  },
+  formTitle: {
+    fontSize: theme.fonts.sizes.lg,
+    fontWeight: 'bold',
+    color: theme.colors.primary,
   },
   label: {
-    fontSize: 16,
+    fontSize: theme.fonts.sizes.md,
     fontWeight: '600',
-    color: '#2c3e50',
-    marginBottom: 8,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#e1e8ed',
-    borderRadius: 8,
-    padding: 16,
-    fontSize: 16,
-    marginBottom: 20,
-    backgroundColor: '#f8f9fa',
+    color: theme.colors.textDark,
+    marginBottom: theme.spacing.xs,
   },
   otpInput: {
-    borderWidth: 1,
-    borderColor: '#e1e8ed',
-    borderRadius: 8,
-    padding: 16,
     fontSize: 24,
-    marginBottom: 20,
-    backgroundColor: '#f8f9fa',
-    letterSpacing: 8,
+    letterSpacing: 6,
+    textAlign: 'center',
+    fontWeight: 'bold',
+    color: theme.colors.primary,
   },
   phoneDisplay: {
-    fontSize: 16,
-    color: '#7f8c8d',
-    marginBottom: 16,
+    fontSize: theme.fonts.sizes.md,
+    color: theme.colors.textLight,
+    marginBottom: theme.spacing.sm,
     textAlign: 'center',
-  },
-  button: {
-    backgroundColor: '#3498db',
-    borderRadius: 8,
-    padding: 16,
-    alignItems: 'center',
-    marginBottom: 16,
+    fontWeight: '500',
   },
   buttonDisabled: {
-    backgroundColor: '#bdc3c7',
-  },
-  buttonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '600',
+    backgroundColor: theme.colors.textLight,
+    ...theme.shadows.small,
   },
   resendContainer: {
     alignItems: 'center',
-    marginBottom: 16,
+    marginVertical: theme.spacing.sm,
+  },
+  resendButton: {
+    paddingVertical: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.sm,
   },
   timerText: {
-    color: '#7f8c8d',
-    fontSize: 14,
+    color: theme.colors.textLight,
+    fontSize: theme.fonts.sizes.sm,
   },
   resendText: {
-    color: '#3498db',
-    fontSize: 14,
+    color: theme.colors.secondary,
+    fontSize: theme.fonts.sizes.sm,
     fontWeight: '600',
   },
   backButton: {
     alignItems: 'center',
+    paddingVertical: theme.spacing.xs,
   },
   backButtonText: {
-    color: '#e74c3c',
-    fontSize: 14,
+    color: theme.colors.danger,
+    fontSize: theme.fonts.sizes.sm,
     fontWeight: '600',
   },
   footer: {
-    marginTop: 40,
     alignItems: 'center',
   },
-  footerText: {
-    fontSize: 12,
-    color: '#95a5a6',
+  featuresContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    width: '100%',
+    marginBottom: theme.spacing.md,
+  },
+  feature: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  featureIcon: {
+    fontSize: 20,
+    marginBottom: theme.spacing.xs,
+  },
+  featureText: {
+    fontSize: theme.fonts.sizes.xs,
+    color: theme.colors.textSecondary,
     textAlign: 'center',
-    lineHeight: 18,
+    fontWeight: '500',
+  },
+  footerText: {
+    fontSize: theme.fonts.sizes.xs,
+    color: theme.colors.textLight,
+    textAlign: 'center',
+    lineHeight: 16,
+    opacity: 0.8,
   },
 });
 

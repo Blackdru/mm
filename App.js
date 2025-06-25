@@ -1,6 +1,7 @@
 import React, {useState, useEffect} from 'react';
-import {StatusBar, Alert, View, Text, ActivityIndicator, StyleSheet} from 'react-native';
+import {StatusBar, Alert, View, Text, ActivityIndicator, StyleSheet, Platform} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 // Screens
 import AuthScreen from './src/screens/AuthScreen';
@@ -17,6 +18,10 @@ import ProfileScreen from './src/screens/ProfileScreen';
 import {AuthProvider, useAuth} from './src/context/AuthContext';
 import {GameProvider} from './src/context/GameContext';
 import {WalletProvider} from './src/context/WalletContext';
+
+// Theme
+import { theme } from './src/styles/theme';
+import GradientBackground from './src/components/GradientBackground';
 
 const AppNavigator = () => {
   const [currentScreen, setCurrentScreen] = useState('Auth');
@@ -78,24 +83,39 @@ const AppNavigator = () => {
   };
 
   return (
-    <>
-      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
-      {renderScreen()}
-    </>
+    <SafeAreaProvider>
+      <StatusBar 
+        barStyle="light-content" 
+        backgroundColor={theme.colors.background}
+        translucent={true}
+      />
+      <SafeAreaView style={styles.safeArea}>
+        <GradientBackground>
+          {renderScreen()}
+        </GradientBackground>
+      </SafeAreaView>
+    </SafeAreaProvider>
   );
 };
+
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+  },
+});
 
 const loadingStyles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f8f9fa',
+    backgroundColor: 'transparent',
   },
   text: {
-    marginTop: 16,
-    fontSize: 16,
-    color: '#2c3e50',
+    marginTop: theme.spacing.md,
+    fontSize: theme.fonts.sizes.md,
+    color: theme.colors.textPrimary,
     fontWeight: '500',
   },
 });

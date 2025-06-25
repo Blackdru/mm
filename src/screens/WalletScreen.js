@@ -4,14 +4,17 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  FlatList,
   ActivityIndicator,
   Alert,
   TextInput,
   Modal,
-  SafeAreaView,
+  ScrollView,
+  RefreshControl,
 } from 'react-native';
 import { useWallet } from '../context/WalletContext';
+import { theme, commonStyles } from '../styles/theme';
+import GradientBackground from '../components/GradientBackground';
+import CommonHeader from '../components/CommonHeader';
 
 const WalletScreen = ({ navigation }) => {
   const {
@@ -90,201 +93,541 @@ const WalletScreen = ({ navigation }) => {
     setRefreshing(false);
   };
 
+  const handleBackPress = () => {
+    navigation.navigate('Home');
+  };
+
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backText}>← Back</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>Wallet</Text>
-        <View style={{ width: 60 }} />
-      </View>
-      <View style={styles.balanceCard}>
-        <Text style={styles.balanceLabel}>Wallet Balance</Text>
-        <Text style={styles.balanceAmount}>₹{balance.toFixed(2)}</Text>
-        <View style={styles.actionRow}>
-          <TouchableOpacity style={styles.actionBtn} onPress={() => setShowDeposit(true)}>
-            <Text style={styles.actionBtnText}>Add Money</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.actionBtn} onPress={() => setShowWithdraw(true)}>
-            <Text style={styles.actionBtnText}>Withdraw</Text>
-          </TouchableOpacity>
+    <GradientBackground>
+      <CommonHeader
+        title="Gaming Wallet"
+        icon="💰"
+        onBackPress={handleBackPress}
+      />
+
+      <ScrollView 
+        style={commonStyles.scrollContainer}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={onRefresh}
+            tintColor={theme.colors.primary}
+            colors={[theme.colors.primary]}
+          />
+        }
+      >
+        {/* Balance Card */}
+        <View style={[commonStyles.card, styles.balanceCard]}>
+          <View style={styles.balanceHeader}>
+            <Text style={styles.balanceIcon}>💎</Text>
+            <Text style={styles.balanceLabel}>Your Gaming Balance</Text>
+          </View>
+          <Text style={styles.balanceAmount}>₹{balance.toFixed(2)}</Text>
+          
+          {/* Quick Actions */}
+          <View style={styles.actionRow}>
+            <TouchableOpacity 
+              style={[commonStyles.button, styles.depositBtn]} 
+              onPress={() => setShowDeposit(true)}
+            >
+              <Text style={styles.actionIcon}>💳</Text>
+              <Text style={commonStyles.buttonText}>Add Money</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[commonStyles.button, styles.withdrawBtn]} 
+              onPress={() => setShowWithdraw(true)}
+            >
+              <Text style={styles.actionIcon}>🏦</Text>
+              <Text style={commonStyles.buttonText}>Withdraw</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
-      <Text style={styles.sectionTitle}>Transactions</Text>
-      {loading ? (
-        <ActivityIndicator size="large" color="#3498db" style={{ marginTop: 20 }} />
-      ) : (
-        <FlatList
-          data={transactions}
-          keyExtractor={(item, idx) => item.id || idx.toString()}
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-          renderItem={({ item }) => (
-            <View style={styles.txnItem}>
-              <Text style={styles.txnType}>{item.type}</Text>
-              <Text style={styles.txnAmount}>₹{item.amount}</Text>
-              <Text style={styles.txnStatus}>{item.status}</Text>
-              <Text style={styles.txnDate}>{new Date(item.createdAt).toLocaleString()}</Text>
+
+        {/* Quick Stats */}
+        <View style={styles.statsContainer}>
+          <View style={styles.statCard}>
+            <Text style={styles.statIcon}>🎮</Text>
+            <Text style={styles.statValue}>{transactions.filter(t => t.type === 'GAME_ENTRY').length}</Text>
+            <Text style={styles.statLabel}>Games Played</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statIcon}>🏆</Text>
+            <Text style={styles.statValue}>₹{transactions.filter(t => t.type === 'GAME_WINNING').reduce((sum, t) => sum + parseFloat(t.amount || 0), 0).toFixed(0)}</Text>
+            <Text style={styles.statLabel}>Total Winnings</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statIcon}>📈</Text>
+            <Text style={styles.statValue}>{transactions.length}</Text>
+            <Text style={styles.statLabel}>Transactions</Text>
+          </View>
+        </View>
+
+        {/* Transactions Section */}
+        <View style={styles.transactionsSection}>
+          <Text style={styles.sectionTitle}>🕒 Recent Transactions</Text>
+          
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={theme.colors.primary} />
+              <Text style={styles.loadingText}>Loading transactions...</Text>
+            </View>
+          ) : transactions.length > 0 ? (
+            <View style={styles.transactionsList}>
+              {transactions.slice(0, 10).map((item, index) => (
+                <View key={item.id || index} style={styles.txnItem}>
+                  <View style={styles.txnLeft}>
+                    <Text style={styles.txnIcon}>
+                      {item.type === 'DEPOSIT' ? '💳' : 
+                       item.type === 'WITHDRAWAL' ? '🏦' : 
+                       item.type === 'GAME_ENTRY' ? '🎮' : 
+                       item.type === 'GAME_WINNING' ? '🏆' : '💰'}
+                    </Text>
+                    <View style={styles.txnDetails}>
+                      <Text style={styles.txnType}>
+                        {item.type === 'DEPOSIT' ? 'Money Added' : 
+                         item.type === 'WITHDRAWAL' ? 'Money Withdrawn' : 
+                         item.type === 'GAME_ENTRY' ? 'Game Entry Fee' : 
+                         item.type === 'GAME_WINNING' ? 'Game Winning' : item.type}
+                      </Text>
+                      <Text style={styles.txnDate}>
+                        {new Date(item.createdAt).toLocaleDateString()}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.txnRight}>
+                    <Text style={[
+                      styles.txnAmount,
+                      item.type === 'DEPOSIT' || item.type === 'GAME_WINNING' ? styles.txnAmountPositive : styles.txnAmountNegative
+                    ]}>
+                      {item.type === 'DEPOSIT' || item.type === 'GAME_WINNING' ? '+' : '-'}₹{parseFloat(item.amount || 0).toFixed(2)}
+                    </Text>
+                    <Text style={[
+                      styles.txnStatus,
+                      item.status === 'COMPLETED' ? styles.statusCompleted : 
+                      item.status === 'PENDING' ? styles.statusPending : styles.statusFailed
+                    ]}>
+                      {item.status}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyIcon}>🎮</Text>
+              <Text style={styles.emptyText}>No transactions yet</Text>
+              <Text style={styles.emptySubtext}>Start playing games to see your transaction history!</Text>
             </View>
           )}
-          ListEmptyComponent={<Text style={styles.emptyText}>No transactions yet.</Text>}
-        />
-      )}
-      {/* Deposit Modal */}
+        </View>
+      </ScrollView>
+      
+      {/* Gaming Deposit Modal */}
       <Modal visible={showDeposit} animationType="slide" transparent>
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Add Money</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter amount (min ₹10)"
-              keyboardType="numeric"
-              value={amount}
-              onChangeText={setAmount}
-            />
-            <TouchableOpacity style={styles.modalBtn} onPress={handleDeposit}>
-              <Text style={styles.modalBtnText}>Proceed</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.modalCancel} onPress={() => setShowDeposit(false)}>
-              <Text style={styles.modalCancelText}>Cancel</Text>
-            </TouchableOpacity>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalIcon}>💳</Text>
+              <Text style={styles.modalTitle}>Add Money to Wallet</Text>
+              <Text style={styles.modalSubtitle}>Minimum amount: ₹10</Text>
+            </View>
+            
+            <View style={styles.modalForm}>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="Enter amount (min ₹10)"
+                placeholderTextColor={theme.colors.textLight}
+                keyboardType="numeric"
+                value={amount}
+                onChangeText={setAmount}
+              />
+              
+              <View style={styles.quickAmounts}>
+                {[100, 500, 1000, 2000].map(amt => (
+                  <TouchableOpacity 
+                    key={amt}
+                    style={styles.quickAmountBtn}
+                    onPress={() => setAmount(amt.toString())}
+                  >
+                    <Text style={styles.quickAmountText}>₹{amt}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+            
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={styles.modalBtn} onPress={handleDeposit}>
+                <Text style={styles.modalBtnText}>🚀 Proceed to Payment</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.modalCancel} onPress={() => setShowDeposit(false)}>
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
-      {/* Withdraw Modal */}
+
+      {/* Gaming Withdraw Modal */}
       <Modal visible={showWithdraw} animationType="slide" transparent>
         <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Withdraw</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter amount (min ₹100)"
-              keyboardType="numeric"
-              value={amount}
-              onChangeText={setAmount}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Account Number"
-              value={bankDetails.accountNumber}
-              onChangeText={text => setBankDetails({ ...bankDetails, accountNumber: text })}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="IFSC Code"
-              value={bankDetails.ifscCode}
-              onChangeText={text => setBankDetails({ ...bankDetails, ifscCode: text })}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Account Holder Name"
-              value={bankDetails.accountHolderName}
-              onChangeText={text => setBankDetails({ ...bankDetails, accountHolderName: text })}
-            />
-            <TouchableOpacity style={styles.modalBtn} onPress={handleWithdraw}>
-              <Text style={styles.modalBtnText}>Proceed</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.modalCancel} onPress={() => setShowWithdraw(false)}>
-              <Text style={styles.modalCancelText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
+          <ScrollView contentContainerStyle={styles.modalScrollContent}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalIcon}>🏦</Text>
+                <Text style={styles.modalTitle}>Withdraw Money</Text>
+                <Text style={styles.modalSubtitle}>Minimum amount: ₹100</Text>
+              </View>
+              
+              <View style={styles.modalForm}>
+                <TextInput
+                  style={styles.modalInput}
+                  placeholder="Enter amount (min ₹100)"
+                  placeholderTextColor={theme.colors.textLight}
+                  keyboardType="numeric"
+                  value={amount}
+                  onChangeText={setAmount}
+                />
+                
+                <Text style={styles.formSectionTitle}>🏦 Bank Details</Text>
+                
+                <TextInput
+                  style={styles.modalInput}
+                  placeholder="Account Number"
+                  placeholderTextColor={theme.colors.textLight}
+                  value={bankDetails.accountNumber}
+                  onChangeText={text => setBankDetails({ ...bankDetails, accountNumber: text })}
+                />
+                <TextInput
+                  style={styles.modalInput}
+                  placeholder="IFSC Code"
+                  placeholderTextColor={theme.colors.textLight}
+                  value={bankDetails.ifscCode}
+                  onChangeText={text => setBankDetails({ ...bankDetails, ifscCode: text })}
+                />
+                <TextInput
+                  style={styles.modalInput}
+                  placeholder="Account Holder Name"
+                  placeholderTextColor={theme.colors.textLight}
+                  value={bankDetails.accountHolderName}
+                  onChangeText={text => setBankDetails({ ...bankDetails, accountHolderName: text })}
+                />
+              </View>
+              
+              <View style={styles.modalActions}>
+                <TouchableOpacity style={styles.modalBtn} onPress={handleWithdraw}>
+                  <Text style={styles.modalBtnText}>💸 Request Withdrawal</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.modalCancel} onPress={() => setShowWithdraw(false)}>
+                  <Text style={styles.modalCancelText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </ScrollView>
         </View>
       </Modal>
-    </SafeAreaView>
+    </GradientBackground>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8f9fa' },
-  header: {
+  balanceCard: {
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 107, 53, 0.3)',
+  },
+  balanceHeader: {
+    alignItems: 'center',
+    marginBottom: theme.spacing.md,
+  },
+  balanceIcon: {
+    fontSize: 32,
+    marginBottom: theme.spacing.sm,
+  },
+  balanceLabel: { 
+    fontSize: theme.fonts.sizes.md, 
+    color: theme.colors.textLight, 
+    marginBottom: theme.spacing.xs,
+    fontWeight: '500',
+  },
+  balanceAmount: { 
+    fontSize: 36, 
+    fontWeight: 'bold', 
+    color: theme.colors.primary, 
+    marginBottom: theme.spacing.lg,
+    textShadowColor: 'rgba(255, 107, 53, 0.3)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+  },
+  actionRow: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    width: '100%',
+    gap: theme.spacing.md,
+  },
+  actionBtn: {
+    flex: 1,
+    borderRadius: theme.borderRadius.lg,
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.md,
+    alignItems: 'center',
+    ...theme.shadows.medium,
+  },
+  depositBtn: {
+    backgroundColor: theme.colors.success,
+  },
+  withdrawBtn: {
+    backgroundColor: theme.colors.secondary,
+  },
+  actionIcon: {
+    fontSize: 20,
+    marginBottom: theme.spacing.xs,
+  },
+  actionBtnText: { 
+    color: theme.colors.textPrimary, 
+    fontSize: theme.fonts.sizes.sm, 
+    fontWeight: 'bold',
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: theme.spacing.lg,
+    marginBottom: theme.spacing.lg,
+  },
+  statCard: {
+    backgroundColor: theme.colors.surfaceCard,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.md,
+    alignItems: 'center',
+    flex: 1,
+    marginHorizontal: theme.spacing.xs,
+    ...theme.shadows.small,
+    borderWidth: 1,
+    borderColor: 'rgba(78, 205, 196, 0.2)',
+  },
+  statIcon: {
+    fontSize: 24,
+    marginBottom: theme.spacing.xs,
+  },
+  statValue: {
+    fontSize: theme.fonts.sizes.lg,
+    fontWeight: 'bold',
+    color: theme.colors.primary,
+    marginBottom: theme.spacing.xs,
+  },
+  statLabel: {
+    fontSize: theme.fonts.sizes.xs,
+    color: theme.colors.textLight,
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  transactionsSection: {
+    paddingHorizontal: theme.spacing.lg,
+    marginBottom: theme.spacing.xl,
+  },
+  sectionTitle: { 
+    fontSize: theme.fonts.sizes.lg, 
+    fontWeight: 'bold', 
+    color: theme.colors.textPrimary, 
+    marginBottom: theme.spacing.md,
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    paddingVertical: theme.spacing.xl,
+  },
+  loadingText: {
+    fontSize: theme.fonts.sizes.md,
+    color: theme.colors.textSecondary,
+    marginTop: theme.spacing.md,
+  },
+  transactionsList: {
+    gap: theme.spacing.sm,
+  },
+  txnItem: {
+    backgroundColor: theme.colors.surfaceCard,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.md,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e1e8ed',
+    ...theme.shadows.small,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 107, 53, 0.1)',
   },
-  backText: { fontSize: 16, color: '#3498db', fontWeight: '600' },
-  title: { fontSize: 20, fontWeight: 'bold', color: '#2c3e50' },
-  balanceCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 24,
-    margin: 20,
+  txnLeft: {
+    flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    flex: 1,
   },
-  balanceLabel: { fontSize: 14, color: '#7f8c8d', marginBottom: 4 },
-  balanceAmount: { fontSize: 28, fontWeight: 'bold', color: '#27ae60', marginBottom: 12 },
-  actionRow: { flexDirection: 'row', justifyContent: 'space-between', width: '100%' },
-  actionBtn: {
-    backgroundColor: '#3498db',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
-    marginHorizontal: 8,
-    marginTop: 8,
+  txnIcon: {
+    fontSize: 24,
+    marginRight: theme.spacing.md,
   },
-  actionBtnText: { color: '#fff', fontSize: 14, fontWeight: '600' },
-  sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#2c3e50', marginLeft: 20, marginTop: 10 },
-  txnItem: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 16,
-    marginHorizontal: 20,
-    marginVertical: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+  txnDetails: {
+    flex: 1,
   },
-  txnType: { fontWeight: 'bold', color: '#2c3e50' },
-  txnAmount: { color: '#27ae60', fontWeight: 'bold', fontSize: 16 },
-  txnStatus: { color: '#7f8c8d', fontSize: 12 },
-  txnDate: { color: '#95a5a6', fontSize: 12 },
-  emptyText: { textAlign: 'center', color: '#7f8c8d', marginTop: 20 },
+  txnType: { 
+    fontWeight: 'bold', 
+    color: theme.colors.textDark,
+    fontSize: theme.fonts.sizes.md,
+  },
+  txnDate: { 
+    color: theme.colors.textLight, 
+    fontSize: theme.fonts.sizes.sm,
+    marginTop: theme.spacing.xs,
+  },
+  txnRight: {
+    alignItems: 'flex-end',
+  },
+  txnAmount: { 
+    fontWeight: 'bold', 
+    fontSize: theme.fonts.sizes.md,
+  },
+  txnAmountPositive: {
+    color: theme.colors.success,
+  },
+  txnAmountNegative: {
+    color: theme.colors.danger,
+  },
+  txnStatus: { 
+    fontSize: theme.fonts.sizes.xs,
+    marginTop: theme.spacing.xs,
+    fontWeight: '500',
+  },
+  statusCompleted: {
+    color: theme.colors.success,
+  },
+  statusPending: {
+    color: theme.colors.warning,
+  },
+  statusFailed: {
+    color: theme.colors.danger,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    paddingVertical: theme.spacing.xxl,
+  },
+  emptyIcon: {
+    fontSize: 48,
+    marginBottom: theme.spacing.md,
+  },
+  emptyText: { 
+    textAlign: 'center', 
+    color: theme.colors.textSecondary, 
+    fontSize: theme.fonts.sizes.lg,
+    fontWeight: 'bold',
+    marginBottom: theme.spacing.sm,
+  },
+  emptySubtext: {
+    textAlign: 'center', 
+    color: theme.colors.textLight, 
+    fontSize: theme.fonts.sizes.md,
+  },
+  // Modal Styles
   modalContainer: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
     justifyContent: 'center',
     alignItems: 'center',
+    padding: theme.spacing.lg,
+  },
+  modalScrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: theme.spacing.lg,
   },
   modalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 24,
-    width: '85%',
-    alignItems: 'center',
-  },
-  modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#2c3e50', marginBottom: 16 },
-  input: {
-    borderWidth: 1,
-    borderColor: '#e1e8ed',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    marginBottom: 12,
+    backgroundColor: theme.colors.surfaceCard,
+    borderRadius: theme.borderRadius.xl,
+    padding: theme.spacing.lg,
     width: '100%',
-    backgroundColor: '#f8f9fa',
+    maxWidth: 400,
+    ...theme.shadows.large,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 107, 53, 0.3)',
+  },
+  modalHeader: {
+    alignItems: 'center',
+    marginBottom: theme.spacing.lg,
+  },
+  modalIcon: {
+    fontSize: 48,
+    marginBottom: theme.spacing.sm,
+  },
+  modalTitle: { 
+    fontSize: theme.fonts.sizes.xl, 
+    fontWeight: 'bold', 
+    color: theme.colors.primary, 
+    marginBottom: theme.spacing.xs,
+    textAlign: 'center',
+  },
+  modalSubtitle: {
+    fontSize: theme.fonts.sizes.sm,
+    color: theme.colors.textLight,
+    textAlign: 'center',
+  },
+  modalForm: {
+    marginBottom: theme.spacing.lg,
+  },
+  modalInput: {
+    ...commonStyles.input,
+    marginBottom: theme.spacing.md,
+    fontSize: theme.fonts.sizes.md,
+    ...theme.shadows.small,
+  },
+  quickAmounts: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: theme.spacing.md,
+    gap: theme.spacing.sm,
+  },
+  quickAmountBtn: {
+    backgroundColor: theme.colors.accent,
+    borderRadius: theme.borderRadius.md,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
+    flex: 1,
+    alignItems: 'center',
+    ...theme.shadows.small,
+  },
+  quickAmountText: {
+    color: theme.colors.textDark,
+    fontSize: theme.fonts.sizes.sm,
+    fontWeight: 'bold',
+  },
+  formSectionTitle: {
+    fontSize: theme.fonts.sizes.md,
+    fontWeight: 'bold',
+    color: theme.colors.primary,
+    marginBottom: theme.spacing.md,
+    marginTop: theme.spacing.md,
+  },
+  modalActions: {
+    gap: theme.spacing.md,
   },
   modalBtn: {
-    backgroundColor: '#3498db',
-    borderRadius: 8,
-    padding: 14,
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.borderRadius.lg,
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
     alignItems: 'center',
-    width: '100%',
-    marginBottom: 10,
+    ...theme.shadows.medium,
   },
-  modalBtnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  modalCancel: { alignItems: 'center', width: '100%' },
-  modalCancelText: { color: '#e74c3c', fontSize: 14, fontWeight: '600' },
+  modalBtnText: { 
+    color: theme.colors.textPrimary, 
+    fontSize: theme.fonts.sizes.md, 
+    fontWeight: 'bold',
+  },
+  modalCancel: { 
+    alignItems: 'center',
+    paddingVertical: theme.spacing.sm,
+  },
+  modalCancelText: { 
+    color: theme.colors.danger, 
+    fontSize: theme.fonts.sizes.md, 
+    fontWeight: '600',
+  },
 });
 
 export default WalletScreen;

@@ -6,8 +6,13 @@ import {
   StyleSheet,
   ScrollView,
   Alert,
+  Dimensions,
 } from 'react-native';
 import {useWallet} from '../context/WalletContext';
+import { theme, commonStyles } from '../styles/theme';
+import GradientBackground from '../components/GradientBackground';
+
+const { width, height } = Dimensions.get('window');
 
 const AmountSelectionScreen = ({navigation, route}) => {
   const {game, playerCount} = route.params;
@@ -84,21 +89,22 @@ const AmountSelectionScreen = ({navigation, route}) => {
   };
 
   return (
-    <ScrollView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}>
-          <Text style={styles.backButtonText}>← Back</Text>
-        </TouchableOpacity>
-        
-        <View style={styles.gameInfo}>
-          <Text style={styles.gameIcon}>{game.image}</Text>
-          <Text style={styles.gameTitle}>{game.name} - {playerCount} Players</Text>
-          <Text style={styles.gameSubtitle}>Select entry amount</Text>
+    <GradientBackground>
+      <ScrollView style={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+        {/* Gaming Header */}
+        <View style={styles.headerCard}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}>
+            <Text style={styles.backButtonText}>← Back</Text>
+          </TouchableOpacity>
+          
+          <View style={styles.gameInfo}>
+            <Text style={styles.gameIcon}>{game.image}</Text>
+            <Text style={styles.gameTitle}>{game.name} - {playerCount} Players</Text>
+            <Text style={styles.gameSubtitle}>💰 Select entry amount</Text>
+          </View>
         </View>
-      </View>
 
       {/* Wallet Balance */}
       <View style={styles.balanceContainer}>
@@ -191,46 +197,65 @@ const AmountSelectionScreen = ({navigation, route}) => {
           • Refund available if game doesn't start within 5 minutes
         </Text>
       </View>
-    </ScrollView>
+      </ScrollView>
+    </GradientBackground>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: 'transparent',
   },
-  header: {
-    backgroundColor: '#ffffff',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e1e8ed',
+  scrollContainer: {
+    flex: 1,
+  },
+  headerCard: {
+    backgroundColor: theme.colors.surfaceCard,
+    borderRadius: theme.borderRadius.xl,
+    marginHorizontal: theme.spacing.lg,
+    marginTop: theme.spacing.xl,
+    marginBottom: theme.spacing.lg,
+    padding: theme.spacing.lg,
+    ...theme.shadows.large,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 107, 53, 0.2)',
   },
   backButton: {
     alignSelf: 'flex-start',
-    marginBottom: 16,
+    backgroundColor: theme.colors.secondary,
+    borderRadius: theme.borderRadius.lg,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
+    marginBottom: theme.spacing.md,
+    ...theme.shadows.small,
   },
   backButtonText: {
-    fontSize: 16,
-    color: '#3498db',
-    fontWeight: '600',
+    fontSize: theme.fonts.sizes.md,
+    color: theme.colors.textPrimary,
+    fontWeight: 'bold',
   },
   gameInfo: {
     alignItems: 'center',
   },
   gameIcon: {
-    fontSize: 48,
-    marginBottom: 8,
+    fontSize: 56,
+    marginBottom: theme.spacing.sm,
   },
   gameTitle: {
-    fontSize: 20,
+    fontSize: theme.fonts.sizes.xl,
     fontWeight: 'bold',
-    color: '#2c3e50',
-    marginBottom: 4,
+    color: theme.colors.primary,
+    marginBottom: theme.spacing.xs,
+    textAlign: 'center',
+    textShadowColor: 'rgba(255, 107, 53, 0.2)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
   },
   gameSubtitle: {
-    fontSize: 16,
-    color: '#7f8c8d',
+    fontSize: theme.fonts.sizes.md,
+    color: theme.colors.textSecondary,
+    fontWeight: '500',
   },
   balanceContainer: {
     padding: 20,

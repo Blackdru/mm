@@ -5,12 +5,13 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  Image,
   RefreshControl,
   Alert,
 } from 'react-native';
 import {useAuth} from '../context/AuthContext';
 import {useWallet} from '../context/WalletContext';
+import { theme, commonStyles } from '../styles/theme';
+import GradientBackground from '../components/GradientBackground';
 
 const HomeScreen = ({navigation}) => {
   const {user, logout} = useAuth();
@@ -72,333 +73,352 @@ const HomeScreen = ({navigation}) => {
   ];
 
   return (
-    <ScrollView
-      style={styles.container}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-      }>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.userInfo}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {user?.name ? user.name.charAt(0).toUpperCase() : '👤'}
-            </Text>
-          </View>
-          <View style={styles.userDetails}>
-            <Text style={styles.userName}>
-              {user?.name || 'Player'}
-            </Text>
-            <Text style={styles.userPhone}>{user?.phoneNumber}</Text>
+    <GradientBackground>
+      <ScrollView
+        style={commonStyles.scrollContainer}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={onRefresh}
+            tintColor={theme.colors.primary}
+            colors={[theme.colors.primary]}
+          />
+        }>
+        
+        {/* User Header */}
+        <View style={[commonStyles.card, styles.headerCard]}>
+          <View style={[commonStyles.row, commonStyles.spaceBetween]}>
+            <View style={commonStyles.row}>
+              <View style={styles.avatar}>
+                <Text style={styles.avatarText}>
+                  {user?.name ? user.name.charAt(0).toUpperCase() : '🎮'}
+                </Text>
+              </View>
+              <View style={styles.userDetails}>
+                <Text style={styles.welcomeText}>Welcome back!</Text>
+                <Text style={styles.userName}>
+                  {user?.name || 'Gamer'}
+                </Text>
+                <Text style={styles.userPhone}>{user?.phoneNumber}</Text>
+              </View>
+            </View>
+            
+            <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+              <Text style={styles.logoutText}>🚪</Text>
+            </TouchableOpacity>
           </View>
         </View>
-        
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Text style={styles.logoutText}>Logout</Text>
-        </TouchableOpacity>
-      </View>
 
-      {/* Wallet Section */}
-      <View style={styles.walletSection}>
-        <View style={styles.walletCard}>
-          <View style={styles.walletInfo}>
-            <Text style={styles.walletLabel}>Wallet Balance</Text>
-            <Text style={styles.walletAmount}>₹{balance.toFixed(2)}</Text>
+        {/* Wallet Section */}
+        <View style={[commonStyles.card, styles.walletCard]}>
+          <View style={styles.walletHeader}>
+            <Text style={styles.walletIcon}>💎</Text>
+            <Text style={styles.walletLabel}>Gaming Wallet</Text>
           </View>
+          <Text style={styles.walletAmount}>₹{balance.toFixed(2)}</Text>
           <TouchableOpacity
-            style={styles.walletButton}
+            style={[commonStyles.button, styles.walletButton]}
             onPress={() => navigation.navigate('Wallet')}>
-            <Text style={styles.walletButtonText}>Manage</Text>
+            <Text style={commonStyles.buttonText}>💰 Manage Wallet</Text>
           </TouchableOpacity>
         </View>
-      </View>
 
-      {/* Quick Actions */}
-      <View style={styles.quickActions}>
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => navigation.navigate('Wallet')}>
-          <Text style={styles.actionIcon}>💰</Text>
-          <Text style={styles.actionText}>Add Money</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => navigation.navigate('Profile')}>
-          <Text style={styles.actionIcon}>👤</Text>
-          <Text style={styles.actionText}>Profile</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.actionButton}>
-          <Text style={styles.actionIcon}>🏆</Text>
-          <Text style={styles.actionText}>Leaderboard</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.actionButton}>
-          <Text style={styles.actionIcon}>📊</Text>
-          <Text style={styles.actionText}>Stats</Text>
-        </TouchableOpacity>
-      </View>
+        {/* Quick Actions */}
+        <View style={styles.quickActions}>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.addMoneyBtn]}
+            onPress={() => navigation.navigate('Wallet')}>
+            <Text style={styles.actionIcon}>💳</Text>
+            <Text style={styles.actionText}>Add Money</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[styles.actionButton, styles.profileBtn]}
+            onPress={() => navigation.navigate('Profile')}>
+            <Text style={styles.actionIcon}>👤</Text>
+            <Text style={styles.actionText}>Profile</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity style={[styles.actionButton, styles.leaderboardBtn]}>
+            <Text style={styles.actionIcon}>🏆</Text>
+            <Text style={styles.actionText}>Leaderboard</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity style={[styles.actionButton, styles.statsBtn]}>
+            <Text style={styles.actionIcon}>📊</Text>
+            <Text style={styles.actionText}>Stats</Text>
+          </TouchableOpacity>
+        </View>
 
-      {/* Games Section */}
-      <View style={styles.gamesSection}>
-        <Text style={styles.sectionTitle}>Choose Your Game</Text>
-        
-        <View style={styles.gamesGrid}>
-          {games.map((game) => (
-            <TouchableOpacity
-              key={game.id}
-              style={[
-                styles.gameCard,
-                !game.available && styles.gameCardDisabled,
-              ]}
-              onPress={() => {
-                if (game.available) {
-                  navigation.navigate('PlayerSelection', {game});
-                } else {
-                  Alert.alert('Coming Soon', `${game.name} will be available soon!`);
-                }
-              }}
-              disabled={!game.available}>
-              <View style={styles.gameImageContainer}>
-                <Text style={styles.gameImage}>{game.image}</Text>
-              </View>
-              <Text style={styles.gameName}>{game.name}</Text>
-              <Text style={styles.gameDescription}>{game.description}</Text>
-              {!game.available && (
-                <View style={styles.comingSoonBadge}>
-                  <Text style={styles.comingSoonText}>Coming Soon</Text>
+        {/* Games Section */}
+        <View style={styles.section}>
+          <Text style={commonStyles.sectionTitle}>🎮 Choose Your Battle</Text>
+          
+          <View style={styles.gamesGrid}>
+            {games.map((game) => (
+              <TouchableOpacity
+                key={game.id}
+                style={[
+                  styles.gameCard,
+                  !game.available && styles.gameCardDisabled,
+                ]}
+                onPress={() => {
+                  if (game.available) {
+                    navigation.navigate('PlayerSelection', {game});
+                  } else {
+                    Alert.alert('Coming Soon', `${game.name} will be available soon!`);
+                  }
+                }}
+                disabled={!game.available}>
+                <View style={styles.gameImageContainer}>
+                  <Text style={styles.gameImage}>{game.image}</Text>
                 </View>
-              )}
-            </TouchableOpacity>
-          ))}
+                <Text style={styles.gameName}>{game.name}</Text>
+                <Text style={styles.gameDescription}>{game.description}</Text>
+                {game.available && (
+                  <View style={styles.playNowBadge}>
+                    <Text style={styles.playNowText}>Play Now!</Text>
+                  </View>
+                )}
+                {!game.available && (
+                  <View style={styles.comingSoonBadge}>
+                    <Text style={styles.comingSoonText}>Coming Soon</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
-      </View>
 
-      {/* Recent Games */}
-      <View style={styles.recentSection}>
-        <Text style={styles.sectionTitle}>Recent Games</Text>
-        <View style={styles.recentCard}>
-          <Text style={styles.recentText}>No recent games</Text>
-          <Text style={styles.recentSubtext}>Start playing to see your game history</Text>
+        {/* Recent Activity */}
+        <View style={styles.section}>
+          <Text style={commonStyles.sectionTitle}>🕒 Recent Activity</Text>
+          <View style={[commonStyles.card, commonStyles.center]}>
+            <Text style={styles.recentIcon}>🎲</Text>
+            <Text style={styles.recentText}>No recent games</Text>
+            <Text style={styles.recentSubtext}>Start your gaming journey now!</Text>
+            <TouchableOpacity 
+              style={[commonStyles.button, styles.startGameBtn]}
+              onPress={() => navigation.navigate('PlayerSelection', {game: games[0]})}>
+              <Text style={commonStyles.buttonText}>🚀 Start Playing</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </GradientBackground>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8f9fa',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e1e8ed',
-  },
-  userInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  headerCard: {
+    marginTop: theme.spacing.sm,
   },
   avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#3498db',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: theme.colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: theme.spacing.sm,
+    ...theme.shadows.small,
   },
   avatarText: {
-    color: '#ffffff',
-    fontSize: 20,
+    color: theme.colors.textPrimary,
+    fontSize: theme.fonts.sizes.lg,
     fontWeight: 'bold',
   },
   userDetails: {
     flex: 1,
   },
+  welcomeText: {
+    fontSize: theme.fonts.sizes.sm,
+    color: theme.colors.textLight,
+    fontWeight: '500',
+  },
   userName: {
-    fontSize: 18,
+    fontSize: theme.fonts.sizes.lg,
     fontWeight: 'bold',
-    color: '#2c3e50',
+    color: theme.colors.primary,
+    marginVertical: theme.spacing.xs,
   },
   userPhone: {
-    fontSize: 14,
-    color: '#7f8c8d',
+    fontSize: theme.fonts.sizes.sm,
+    color: theme.colors.textSecondary,
+    fontWeight: '500',
   },
   logoutButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#e74c3c',
+    backgroundColor: theme.colors.danger,
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing.sm,
+    ...theme.shadows.small,
   },
   logoutText: {
-    color: '#e74c3c',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  walletSection: {
-    padding: 20,
+    fontSize: theme.fonts.sizes.md,
   },
   walletCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 20,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 107, 53, 0.2)',
   },
-  walletInfo: {
-    flex: 1,
+  walletHeader: {
+    alignItems: 'center',
+    marginBottom: theme.spacing.sm,
+    flexDirection: 'row',
+  },
+  walletIcon: {
+    fontSize: 24,
+    marginRight: theme.spacing.xs,
   },
   walletLabel: {
-    fontSize: 14,
-    color: '#7f8c8d',
-    marginBottom: 4,
+    fontSize: theme.fonts.sizes.md,
+    color: theme.colors.textLight,
+    fontWeight: '500',
   },
   walletAmount: {
-    fontSize: 24,
+    fontSize: theme.fonts.sizes.xxxl,
     fontWeight: 'bold',
-    color: '#27ae60',
+    color: theme.colors.primary,
+    marginBottom: theme.spacing.sm,
   },
   walletButton: {
-    backgroundColor: '#3498db',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
-  },
-  walletButtonText: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: '600',
+    backgroundColor: theme.colors.success,
   },
   quickActions: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingHorizontal: 20,
-    marginBottom: 20,
+    justifyContent: 'space-between',
+    marginHorizontal: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
+    gap: theme.spacing.xs,
   },
   actionButton: {
+    flex: 1,
     alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    minWidth: 70,
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 1},
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    backgroundColor: theme.colors.surfaceCard,
+    borderRadius: theme.borderRadius.md,
+    paddingVertical: theme.spacing.sm,
+    ...theme.shadows.small,
+    minHeight: 60,
+    justifyContent: 'center',
+  },
+  addMoneyBtn: {
+    backgroundColor: theme.colors.success,
+  },
+  profileBtn: {
+    backgroundColor: theme.colors.secondary,
+  },
+  leaderboardBtn: {
+    backgroundColor: theme.colors.accent,
+  },
+  statsBtn: {
+    backgroundColor: theme.colors.primaryLight,
   },
   actionIcon: {
-    fontSize: 24,
-    marginBottom: 8,
+    fontSize: 20,
+    marginBottom: theme.spacing.xs,
   },
   actionText: {
-    fontSize: 12,
-    color: '#2c3e50',
-    fontWeight: '500',
-  },
-  gamesSection: {
-    padding: 20,
-  },
-  sectionTitle: {
-    fontSize: 20,
+    fontSize: theme.fonts.sizes.xs,
+    color: theme.colors.textPrimary,
     fontWeight: 'bold',
-    color: '#2c3e50',
-    marginBottom: 16,
+    textAlign: 'center',
+  },
+  section: {
+    marginHorizontal: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
   },
   gamesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
+    gap: theme.spacing.xs,
   },
   gameCard: {
     width: '48%',
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
+    backgroundColor: theme.colors.surfaceCard,
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing.sm,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    ...theme.shadows.small,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 107, 53, 0.1)',
+    position: 'relative',
+    minHeight: 120,
   },
   gameCardDisabled: {
     opacity: 0.6,
   },
   gameImageContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#f8f9fa',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: theme.colors.backgroundLight,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: theme.spacing.xs,
   },
   gameImage: {
-    fontSize: 30,
+    fontSize: 24,
   },
   gameName: {
-    fontSize: 16,
+    fontSize: theme.fonts.sizes.sm,
     fontWeight: 'bold',
-    color: '#2c3e50',
-    marginBottom: 4,
+    color: theme.colors.primary,
+    marginBottom: theme.spacing.xs,
+    textAlign: 'center',
   },
   gameDescription: {
-    fontSize: 12,
-    color: '#7f8c8d',
+    fontSize: theme.fonts.sizes.xs,
+    color: theme.colors.textLight,
     textAlign: 'center',
+  },
+  playNowBadge: {
+    position: 'absolute',
+    bottom: 4,
+    left: 4,
+    backgroundColor: theme.colors.success,
+    paddingHorizontal: theme.spacing.xs,
+    paddingVertical: 2,
+    borderRadius: theme.borderRadius.sm,
+  },
+  playNowText: {
+    fontSize: 10,
+    color: theme.colors.textPrimary,
+    fontWeight: 'bold',
   },
   comingSoonBadge: {
     position: 'absolute',
-    top: 8,
-    right: 8,
-    backgroundColor: '#f39c12',
-    paddingHorizontal: 6,
+    top: 4,
+    right: 4,
+    backgroundColor: theme.colors.warning,
+    paddingHorizontal: theme.spacing.xs,
     paddingVertical: 2,
-    borderRadius: 4,
+    borderRadius: theme.borderRadius.sm,
   },
   comingSoonText: {
     fontSize: 10,
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
     fontWeight: 'bold',
   },
-  recentSection: {
-    padding: 20,
-  },
-  recentCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 20,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+  recentIcon: {
+    fontSize: 32,
+    marginBottom: theme.spacing.xs,
   },
   recentText: {
-    fontSize: 16,
-    color: '#7f8c8d',
-    marginBottom: 4,
+    fontSize: theme.fonts.sizes.md,
+    color: theme.colors.primary,
+    fontWeight: 'bold',
+    marginBottom: theme.spacing.xs,
   },
   recentSubtext: {
-    fontSize: 12,
-    color: '#95a5a6',
+    fontSize: theme.fonts.sizes.sm,
+    color: theme.colors.textLight,
+    marginBottom: theme.spacing.sm,
+    textAlign: 'center',
+  },
+  startGameBtn: {
+    marginTop: theme.spacing.xs,
   },
 });
 
