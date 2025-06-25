@@ -1,6 +1,7 @@
 import React, {createContext, useContext, useReducer, useEffect} from 'react';
 import io from 'socket.io-client';
 import config from '../config/config';
+import {useAuth} from './AuthContext';
 
 const GameContext = createContext();
 
@@ -64,49 +65,81 @@ const gameReducer = (state, action) => {
 
 export const GameProvider = ({children}) => {
   const [state, dispatch] = useReducer(gameReducer, initialState);
+  const {token, isAuthenticated} = useAuth();
 
   useEffect(() => {
-    const socket = io(config.SERVER_URL, config.SOCKET_CONFIG);
+    if (!isAuthenticated || !token) {
+      return;
+    }
+
+    console.log('Initializing socket connection...');
+    
+    const socket = io(config.SERVER_URL, {
+      ...config.SOCKET_CONFIG,
+      auth: {
+        token: token
+      }
+    });
     
     dispatch({type: 'SET_SOCKET', payload: socket});
 
     socket.on('connect', () => {
-      console.log('Connected to server');
+      console.log('✅ Connected to game server');
     });
 
-    socket.on('disconnect', () => {
-      console.log('Disconnected from server');
+    socket.on('disconnect', (reason) => {
+      console.log('❌ Disconnected from server:', reason);
     });
 
     socket.on('connect_error', (error) => {
-      console.error('Connection error:', error);
+      console.error('❌ Connection error:', error);
+    });
+
+    socket.on('matchFound', (data) => {
+      console.log('🎮 Match found:', data);
+      dispatch({type: 'SET_GAME_ID', payload: data.game.id});
     });
 
     socket.on('gameJoined', (data) => {
+      console.log('🎮 Game joined:', data);
       dispatch({type: 'SET_GAME_ID', payload: data.gameId});
       dispatch({type: 'SET_PLAYER_ID', payload: data.playerId});
     });
 
     socket.on('playersUpdated', (players) => {
+      console.log('👥 Players updated:', players);
       dispatch({type: 'UPDATE_PLAYERS', payload: players});
     });
 
     socket.on('gameStateUpdated', (gameState) => {
+      console.log('🎲 Game state updated:', gameState);
       dispatch({type: 'UPDATE_GAME_STATE', payload: gameState});
     });
 
     socket.on('diceRolled', (data) => {
-      dispatch({type: 'ROLL_DICE', payload: data.value});
+      console.log('🎲 Dice rolled:', data);
+      dispatch({type: 'ROLL_DICE', payload: data.diceValue});
+    });
+
+    socket.on('pieceMoved', (data) => {
+      console.log('♟️ Piece moved:', data);
+      // Handle piece movement
+    });
+
+    socket.on('gameFinished', (data) => {
+      console.log('🏆 Game finished:', data);
+      dispatch({type: 'SET_WINNER', payload: data.winner});
     });
 
     socket.on('error', (error) => {
-      console.error('Game error:', error);
+      console.error('❌ Game error:', error);
     });
 
     return () => {
+      console.log('🔌 Disconnecting socket...');
       socket.disconnect();
     };
-  }, []);
+  }, [isAuthenticated, token]);
 
   const joinGame = (playerCount, paymentConfirmed) => {
     if (state.socket && paymentConfirmed) {

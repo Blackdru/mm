@@ -1,5 +1,5 @@
 import React, {useState, useEffect} from 'react';
-import {StatusBar, Alert} from 'react-native';
+import {StatusBar, Alert, View, Text, ActivityIndicator, StyleSheet} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Screens
@@ -31,7 +31,12 @@ const AppNavigator = () => {
   useEffect(() => {
     if (!loading) {
       if (user) {
-        setCurrentScreen('Home');
+        // Check if user has completed profile (has name)
+        if (!user.name || user.name.trim() === '') {
+          setCurrentScreen('Profile');
+        } else {
+          setCurrentScreen('Home');
+        }
       } else {
         setCurrentScreen('Auth');
       }
@@ -40,7 +45,12 @@ const AppNavigator = () => {
 
   const renderScreen = () => {
     if (loading) {
-      return null; // You can add a loading screen here
+      return (
+        <View style={loadingStyles.container}>
+          <ActivityIndicator size="large" color="#3498db" />
+          <Text style={loadingStyles.text}>Loading Budzee...</Text>
+        </View>
+      );
     }
 
     switch (currentScreen) {
@@ -74,6 +84,21 @@ const AppNavigator = () => {
     </>
   );
 };
+
+const loadingStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+  },
+  text: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#2c3e50',
+    fontWeight: '500',
+  },
+});
 
 const App = () => {
   return (

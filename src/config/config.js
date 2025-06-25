@@ -1,22 +1,30 @@
 // Configuration file for the Ludo Game App
 
+// Function to get local IP address for development
+const getDevServerUrl = () => {
+  // For Android emulator
+  if (__DEV__) {
+    // Try different common development URLs
+    return 'http://10.0.2.2:8080'; // Android emulator default
+    // For physical device, you might need to use your computer's IP
+    // return 'http://192.168.1.100:8080'; // Replace with your actual IP
+  }
+  return 'http://localhost:8080';
+};
+
 const config = {
   // Server configuration
-  SERVER_URL: __DEV__ 
-    ? 'http://10.0.2.2:8080'  // Android emulator
-    : 'http://localhost:8080',
+  SERVER_URL: getDevServerUrl(),
   
   // API Base URL
-  API_BASE_URL: __DEV__ 
-    ? 'http://10.0.2.2:8080/api'  // Android emulator
-    : 'http://localhost:8080/api',
+  API_BASE_URL: `${getDevServerUrl()}/api`,
   
   // Alternative URLs for different environments
   SERVER_URLS: {
     ANDROID_EMULATOR: 'http://10.0.2.2:8080',
     IOS_SIMULATOR: 'http://localhost:8080',
     PHYSICAL_DEVICE: 'http://192.168.1.100:8080', // Replace with your computer's IP
-    PRODUCTION: 'http://localhost:8080'
+    PRODUCTION: 'https://your-production-domain.com'
   },
   
   // API URLs for different environments
@@ -24,7 +32,7 @@ const config = {
     ANDROID_EMULATOR: 'http://10.0.2.2:8080/api',
     IOS_SIMULATOR: 'http://localhost:8080/api',
     PHYSICAL_DEVICE: 'http://192.168.1.100:8080/api', // Replace with your computer's IP
-    PRODUCTION: 'http://localhost:8080/api'
+    PRODUCTION: 'https://your-production-domain.com/api'
   },
 
   // Socket.io configuration

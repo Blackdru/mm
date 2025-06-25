@@ -64,14 +64,20 @@ const AuthScreen = ({navigation}) => {
     }
 
     setLoading(true);
-    const result = await verifyOTP(phoneNumber, otp);
-    setLoading(false);
+    try {
+      const result = await verifyOTP(phoneNumber, otp);
+      setLoading(false);
 
-    if (result.success) {
-      Alert.alert('Success', 'Login successful!');
-      // Navigation will be handled by AuthContext
-    } else {
-      Alert.alert('Error', result.message);
+      if (result.success) {
+        // Don't show alert, let the app navigate automatically
+        console.log('OTP verification successful, user will be redirected');
+      } else {
+        Alert.alert('Error', result.message || 'Invalid OTP. Please try again.');
+      }
+    } catch (error) {
+      setLoading(false);
+      console.error('OTP verification error:', error);
+      Alert.alert('Error', 'Something went wrong. Please try again.');
     }
   };
 

@@ -46,18 +46,35 @@ export const WalletProvider = ({children}) => {
 
   const fetchBalance = async () => {
     try {
-      const response = await fetch(`${config.API_BASE_URL}/payment/balance`, {
+      if (!token) {
+        console.log('No token available for balance fetch');
+        return;
+      }
+
+      const response = await fetch(`${config.API_BASE_URL}/wallet/balance`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
       });
 
+      if (!response.ok) {
+        console.log('Balance fetch failed:', response.status);
+        // Set default balance if API fails
+        dispatch({type: 'SET_BALANCE', payload: 0});
+        return;
+      }
+
       const data = await response.json();
       if (data.success) {
-        dispatch({type: 'SET_BALANCE', payload: data.balance});
+        dispatch({type: 'SET_BALANCE', payload: parseFloat(data.balance) || 0});
+      } else {
+        // Set default balance if response is not successful
+        dispatch({type: 'SET_BALANCE', payload: 0});
       }
     } catch (error) {
       console.error('Fetch balance error:', error);
+      // Set default balance on error
+      dispatch({type: 'SET_BALANCE', payload: 0});
     }
   };
 
@@ -88,12 +105,19 @@ export const WalletProvider = ({children}) => {
   const fetchRazorpayKey = async () => {
     try {
       const response = await fetch(`${config.API_BASE_URL}/payment/razorpay-key`);
+      
+      if (!response.ok) {
+        console.log('Razorpay key fetch failed:', response.status);
+        return;
+      }
+      
       const data = await response.json();
       if (data.success) {
         dispatch({type: 'SET_RAZORPAY_KEY', payload: data.key});
       }
     } catch (error) {
       console.error('Fetch Razorpay key error:', error);
+      // Don't crash the app if Razorpay key fetch fails
     }
   };
 
