@@ -1,44 +1,27 @@
 // Configuration file for the Ludo Game App
-import { Platform } from 'react-native';
 
-// Function to get appropriate server URL based on environment
-const getDevServerUrl = () => {
-  if (__DEV__) {
-    // Development environment
-    if (Platform.OS === 'android') {
-      // Android emulator uses 10.0.2.2 to access host machine
-      return 'http://10.0.2.2:8080';
-    } else {
-      // iOS simulator can use localhost
-      return 'http://localhost:8080';
-    }
-  } else {
-    // Production environment
-    return 'https://test.fivlog.space';
-  }
-};
+const BASE_URL = 'http://192.168.180.58:8080';
 
 const config = {
   // Server configuration
-  SERVER_URL: getDevServerUrl(),
-  
+  SERVER_URL: BASE_URL,
+
   // API Base URL
-  API_BASE_URL: `${getDevServerUrl()}/api`,
-  
-  // Alternative URLs for different environments
+  API_BASE_URL: `${BASE_URL}/api`,
+
+  // All possible URLs (optional for testing or reference)
   SERVER_URLS: {
     ANDROID_EMULATOR: 'http://10.0.2.2:8080',
     IOS_SIMULATOR: 'http://localhost:8080',
-    PHYSICAL_DEVICE: 'http://192.168.1.100:8080', // Replace with your computer's IP
-    PRODUCTION: 'https://test.fivlog.space'
+    PHYSICAL_DEVICE: 'http://192.168.180.58:8080',
+    PRODUCTION: 'http://192.168.180.58:8080',
   },
-  
-  // API URLs for different environments
+
   API_URLS: {
     ANDROID_EMULATOR: 'http://10.0.2.2:8080/api',
     IOS_SIMULATOR: 'http://localhost:8080/api',
-    PHYSICAL_DEVICE: 'http://192.168.1.100:8080/api', // Replace with your computer's IP
-    PRODUCTION: 'https://test.fivlog.space/api'
+    PHYSICAL_DEVICE: 'http://192.168.180.58:8080/api',
+    PRODUCTION: 'http://192.168.180.58:8080/api',
   },
 
   // Socket.io configuration

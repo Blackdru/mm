@@ -74,7 +74,7 @@ const WalletScreen = ({ navigation }) => {
         image: 'https://your-logo-url.com/logo.png', // Replace with your logo URL
         currency: 'INR',
         key: razorpayKey,
-        amount: Number(amount) * 100, // Amount in paise
+        amount: amount * 100, // Amount in paise
         name: 'Budzee Gaming',
         order_id: order.orderId,
         prefill: {

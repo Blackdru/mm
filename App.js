@@ -6,11 +6,12 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 // Screens
 import AuthScreen from './src/screens/AuthScreen';
 import HomeScreen from './src/screens/HomeScreen';
-import GameSelectionScreen from './src/screens/GameSelectionScreen';
 import PlayerSelectionScreen from './src/screens/PlayerSelectionScreen';
 import AmountSelectionScreen from './src/screens/AmountSelectionScreen';
 import MatchmakingScreen from './src/screens/MatchmakingScreen';
 import GameScreen from './src/screens/GameScreen';
+import MemoryGameScreen from './src/screens/MemoryGame';
+import FastLudoGameScreen from './src/screens/FastLudoGame';
 import WalletScreen from './src/screens/WalletScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 
@@ -63,8 +64,6 @@ const AppNavigator = () => {
         return <AuthScreen navigation={{navigate}} />;
       case 'Home':
         return <HomeScreen navigation={{navigate}} />;
-      case 'GameSelection':
-        return <GameSelectionScreen navigation={{navigate}} />;
       case 'PlayerSelection':
         return <PlayerSelectionScreen navigation={{navigate}} route={{params: screenParams}} />;
       case 'AmountSelection':
@@ -73,6 +72,10 @@ const AppNavigator = () => {
         return <MatchmakingScreen navigation={{navigate}} route={{params: screenParams}} />;
       case 'Game':
         return <GameScreen navigation={{navigate}} route={{params: screenParams}} />;
+      case 'MemoryGame':
+        return <MemoryGameScreen navigation={{navigate}} route={{params: screenParams}} />;
+      case 'FastLudoGame':
+        return <FastLudoGameScreen navigation={{navigate}} route={{params: screenParams}} />;
       case 'Wallet':
         return <WalletScreen navigation={{navigate}} />;
       case 'Profile':

@@ -15,31 +15,81 @@ const PlayerSelectionScreen = ({navigation, route}) => {
   const {game} = route.params;
   const [selectedPlayers, setSelectedPlayers] = useState(null);
 
-  const playerOptions = [
-    {
-      count: 2,
-      title: '2 Players',
-      description: 'Quick match with one opponent',
-      icon: '👥',
-      available: true,
-      features: ['Faster gameplay', 'Quick matchmaking', 'Higher win chances']
-    },
-    {
-      count: 4,
-      title: '4 Players',
-      description: 'Full game with three opponents',
-      icon: '👥👥',
-      available: true,
-      features: ['Classic Ludo experience', 'More competitive', 'Bigger prize pools']
-    },
-  ];
+  // Generate player options based on game type
+  const getPlayerOptions = () => {
+    if (game.id === 'memory') {
+      return [
+        {
+          count: 2,
+          title: '2 Players Only',
+          description: 'Memory card matching duel',
+          icon: '🧠',
+          available: true,
+          features: ['Turn-based gameplay', 'Memory challenge', 'Quick matches']
+        }
+      ];
+    } else if (game.id === 'fast_ludo') {
+      return [
+        {
+          count: 2,
+          title: '2 Players',
+          description: 'Fast-paced Ludo with 5-minute timer',
+          icon: '⚡',
+          available: true,
+          features: ['5-minute timer', 'Points-based scoring', 'All tokens start outside']
+        },
+        {
+          count: 4,
+          title: '4 Players',
+          description: 'Fast Ludo battle with 10-minute timer',
+          icon: '⚡⚡',
+          available: true,
+          features: ['10-minute timer', 'Points-based scoring', 'All tokens start outside']
+        }
+      ];
+    } else {
+      // Classic Ludo
+      return [
+        {
+          count: 2,
+          title: '2 Players',
+          description: 'Quick match with one opponent',
+          icon: '👥',
+          available: true,
+          features: ['Faster gameplay', 'Quick matchmaking', 'Higher win chances']
+        },
+        {
+          count: 4,
+          title: '4 Players',
+          description: 'Full game with three opponents',
+          icon: '👥👥',
+          available: true,
+          features: ['Classic Ludo experience', 'More competitive', 'Bigger prize pools']
+        }
+      ];
+    }
+  };
+
+  const playerOptions = getPlayerOptions();
 
   const handlePlayerSelection = (playerCount) => {
     setSelectedPlayers(playerCount);
-    navigation.navigate('AmountSelection', {
-      game,
-      playerCount,
-    });
+    
+    // Route to appropriate screen based on game type
+    if (game.id === 'memory') {
+      // For memory game, go directly to matchmaking
+      navigation.navigate('Matchmaking', {
+        game,
+        playerCount,
+        entryFee: 0, // Memory game is free for now
+      });
+    } else {
+      // For Ludo games, go to amount selection
+      navigation.navigate('AmountSelection', {
+        game,
+        playerCount,
+      });
+    }
   };
 
   const handleBackPress = () => {
@@ -106,11 +156,31 @@ const PlayerSelectionScreen = ({navigation, route}) => {
         <View style={styles.section}>
           <Text style={commonStyles.sectionTitle}>Game Rules</Text>
           <View style={commonStyles.card}>
-            <Text style={styles.ruleItem}>• Roll dice to move your pieces</Text>
-            <Text style={styles.ruleItem}>• Get all 4 pieces to the center to win</Text>
-            <Text style={styles.ruleItem}>��� Roll 6 to get an extra turn</Text>
-            <Text style={styles.ruleItem}>• Capture opponents to send them home</Text>
-            <Text style={styles.ruleItem}>• Winner takes 90% of the prize pool</Text>
+            {game.id === 'memory' ? (
+              <>
+                <Text style={styles.ruleItem}>• Match pairs of cards by flipping them</Text>
+                <Text style={styles.ruleItem}>• Take turns with your opponent</Text>
+                <Text style={styles.ruleItem}>• Remember card positions to win</Text>
+                <Text style={styles.ruleItem}>• Player with most matches wins</Text>
+                <Text style={styles.ruleItem}>• Free to play - no entry fee</Text>
+              </>
+            ) : game.id === 'fast_ludo' ? (
+              <>
+                <Text style={styles.ruleItem}>• All tokens start outside the home</Text>
+                <Text style={styles.ruleItem}>• No need to roll 6 to start</Text>
+                <Text style={styles.ruleItem}>• Points for moves, kills, and finishing</Text>
+                <Text style={styles.ruleItem}>• Timer: 5 mins (2P) / 10 mins (4P)</Text>
+                <Text style={styles.ruleItem}>• Highest score when timer ends wins</Text>
+              </>
+            ) : (
+              <>
+                <Text style={styles.ruleItem}>• Roll dice to move your pieces</Text>
+                <Text style={styles.ruleItem}>• Get all 4 pieces to the center to win</Text>
+                <Text style={styles.ruleItem}>• Roll 6 to get an extra turn</Text>
+                <Text style={styles.ruleItem}>• Capture opponents to send them home</Text>
+                <Text style={styles.ruleItem}>• Winner takes 90% of the prize pool</Text>
+              </>
+            )}
           </View>
         </View>
 

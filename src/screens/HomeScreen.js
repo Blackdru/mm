@@ -42,11 +42,29 @@ const HomeScreen = ({navigation}) => {
   const games = [
     {
       id: 'ludo',
-      name: 'Ludo',
-      description: 'Classic board game for 2-4 players',
+      name: 'Classic Ludo',
+      description: 'Traditional board game for 2-4 players',
       image: '🎲',
       minPlayers: 2,
       maxPlayers: 4,
+      available: true,
+    },
+    {
+      id: 'fast_ludo',
+      name: 'Fast Ludo',
+      description: 'Quick points-based Ludo with timer',
+      image: '⚡',
+      minPlayers: 2,
+      maxPlayers: 4,
+      available: true,
+    },
+    {
+      id: 'memory',
+      name: 'Mind Morga',
+      description: 'Memory card matching for 2 players',
+      image: '🧠',
+      minPlayers: 2,
+      maxPlayers: 2,
       available: true,
     },
     {
@@ -54,20 +72,6 @@ const HomeScreen = ({navigation}) => {
       name: 'Snake & Ladder',
       description: 'Coming Soon',
       image: '🐍',
-      available: false,
-    },
-    {
-      id: 'carrom',
-      name: 'Carrom',
-      description: 'Coming Soon',
-      image: '🎯',
-      available: false,
-    },
-    {
-      id: 'chess',
-      name: 'Chess',
-      description: 'Coming Soon',
-      image: '♟️',
       available: false,
     },
   ];
@@ -89,7 +93,7 @@ const HomeScreen = ({navigation}) => {
         {/* User Header */}
         <View style={[commonStyles.card, styles.headerCard]}>
           <View style={[commonStyles.row, commonStyles.spaceBetween]}>
-            <View style={commonStyles.row}>
+            <View style={[commonStyles.row, styles.userSection]}>
               <View style={styles.avatar}>
                 <Text style={styles.avatarText}>
                   {user?.name ? user.name.charAt(0).toUpperCase() : '🎮'}
@@ -105,7 +109,7 @@ const HomeScreen = ({navigation}) => {
             </View>
             
             <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-              <Text style={styles.logoutText}>🚪</Text>
+              <Text style={styles.logoutText}>Logout</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -191,17 +195,15 @@ const HomeScreen = ({navigation}) => {
           </View>
         </View>
 
-        {/* Recent Activity */}
+        {/* Quick Start */}
         <View style={styles.section}>
-          <Text style={commonStyles.sectionTitle}>🕒 Recent Activity</Text>
-          <View style={[commonStyles.card, commonStyles.center]}>
-            <Text style={styles.recentIcon}>🎲</Text>
-            <Text style={styles.recentText}>No recent games</Text>
-            <Text style={styles.recentSubtext}>Start your gaming journey now!</Text>
+          <Text style={commonStyles.sectionTitle}>🚀 Quick Start</Text>
+          <View style={[commonStyles.card, styles.quickStartCard]}>
+            <Text style={styles.quickStartText}>Ready to play?</Text>
             <TouchableOpacity 
               style={[commonStyles.button, styles.startGameBtn]}
               onPress={() => navigation.navigate('PlayerSelection', {game: games[0]})}>
-              <Text style={commonStyles.buttonText}>🚀 Start Playing</Text>
+              <Text style={commonStyles.buttonText}>🎲 Play Classic Ludo</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -212,12 +214,16 @@ const HomeScreen = ({navigation}) => {
 
 const styles = StyleSheet.create({
   headerCard: {
-    marginTop: theme.spacing.sm,
+    marginTop: theme.spacing.xs,
+    marginBottom: theme.spacing.sm,
+  },
+  userSection: {
+    flex: 1,
   },
   avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     backgroundColor: theme.colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
@@ -251,11 +257,14 @@ const styles = StyleSheet.create({
   logoutButton: {
     backgroundColor: theme.colors.danger,
     borderRadius: theme.borderRadius.md,
-    padding: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
     ...theme.shadows.small,
   },
   logoutText: {
-    fontSize: theme.fonts.sizes.md,
+    fontSize: theme.fonts.sizes.sm,
+    color: theme.colors.textPrimary,
+    fontWeight: 'bold',
   },
   walletCard: {
     alignItems: 'center',
@@ -401,24 +410,20 @@ const styles = StyleSheet.create({
     color: theme.colors.textPrimary,
     fontWeight: 'bold',
   },
-  recentIcon: {
-    fontSize: 32,
-    marginBottom: theme.spacing.xs,
+  quickStartCard: {
+    alignItems: 'center',
+    paddingVertical: theme.spacing.md,
   },
-  recentText: {
+  quickStartText: {
     fontSize: theme.fonts.sizes.md,
     color: theme.colors.primary,
     fontWeight: 'bold',
-    marginBottom: theme.spacing.xs,
-  },
-  recentSubtext: {
-    fontSize: theme.fonts.sizes.sm,
-    color: theme.colors.textLight,
     marginBottom: theme.spacing.sm,
     textAlign: 'center',
   },
   startGameBtn: {
     marginTop: theme.spacing.xs,
+    minWidth: 200,
   },
 });
 

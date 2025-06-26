@@ -85,10 +85,27 @@ const MatchmakingScreen = ({navigation, route}) => {
           {
             text: 'OK',
             onPress: () => {
-              navigation.navigate('Game', {
-                gameId: data.game.id,
-                game: data.game,
-              });
+              // Route to appropriate game screen based on game type
+              if (game.id === 'memory') {
+                navigation.navigate('MemoryGame', {
+                  roomId: data.game.id,
+                  playerId: data.playerId || 'player1',
+                  playerName: data.playerName || 'Player',
+                  socket: socketConnection,
+                });
+              } else if (game.id === 'fast_ludo') {
+                navigation.navigate('FastLudoGame', {
+                  gameId: data.game.id,
+                  playerId: data.playerId || 'player1',
+                  playerName: data.playerName || 'Player',
+                  socket: socketConnection,
+                });
+              } else {
+                navigation.navigate('Game', {
+                  gameId: data.game.id,
+                  game: data.game,
+                });
+              }
             },
           },
         ]
@@ -117,8 +134,11 @@ const MatchmakingScreen = ({navigation, route}) => {
 
   const joinMatchmaking = () => {
     if (socket) {
+      const gameType = game.id === 'memory' ? 'MEMORY' : 
+                      game.id === 'fast_ludo' ? 'FAST_LUDO' :  'LUDO';
+      
       socket.emit('joinMatchmaking', {
-        gameType: 'LUDO',
+        gameType: gameType,
         maxPlayers: playerCount,
         entryFee: entryFee,
       });
@@ -128,9 +148,11 @@ const MatchmakingScreen = ({navigation, route}) => {
   const leaveMatchmaking = () => {
     if (socket) {
       socket.emit('leaveMatchmaking');
-      socket.disconnect();
+      setTimeout(() => {
+        socket.disconnect();
+      }, 100);
     }
-    navigation.goBack();
+    navigation.navigate('Home');
   };
 
   const startWaitTimer = () => {
@@ -138,7 +160,7 @@ const MatchmakingScreen = ({navigation, route}) => {
       setWaitTime((prev) => prev + 1);
     }, 1000);
 
-    // Auto-cancel after 5 minutes
+    // Auto-cancel after 1 minutes
     const timeout = setTimeout(() => {
       clearInterval(interval);
       if (status === 'searching') {
@@ -155,7 +177,7 @@ const MatchmakingScreen = ({navigation, route}) => {
           ]
         );
       }
-    }, 300000); // 5 minutes
+    }, 60000); // 1 min
 
     return () => {
       clearInterval(interval);
