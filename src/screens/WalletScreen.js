@@ -11,7 +11,9 @@ import {
   ScrollView,
   RefreshControl,
 } from 'react-native';
+import RazorpayCheckout from 'react-native-razorpay';
 import { useWallet } from '../context/WalletContext';
+import { useAuth } from '../context/AuthContext';
 import { theme, commonStyles } from '../styles/theme';
 import GradientBackground from '../components/GradientBackground';
 import CommonHeader from '../components/CommonHeader';
@@ -28,6 +30,8 @@ const WalletScreen = ({ navigation }) => {
     razorpayKey,
     loading,
   } = useWallet();
+  
+  const { user } = useAuth();
 
   const [showDeposit, setShowDeposit] = useState(false);
   const [showWithdraw, setShowWithdraw] = useState(false);
@@ -49,18 +53,70 @@ const WalletScreen = ({ navigation }) => {
       Alert.alert('Error', 'Enter a valid amount (min ₹10)');
       return;
     }
-    const order = await createDepositOrder(Number(amount));
-    if (order.success && razorpayKey) {
-      // Integrate Razorpay here in real app
-      Alert.alert('Demo', 'Razorpay payment would be initiated here.');
-      // On success, call verifyDeposit
-      // await verifyDeposit({ ... });
-      setShowDeposit(false);
-      setAmount('');
-      fetchBalance();
-      fetchTransactions();
-    } else {
-      Alert.alert('Error', order.message || 'Failed to create order');
+
+    try {
+      // Create order from backend
+      const order = await createDepositOrder(Number(amount));
+      
+      if (!order.success) {
+        Alert.alert('Error', order.message || 'Failed to create order');
+        return;
+      }
+
+      if (!razorpayKey) {
+        Alert.alert('Error', 'Payment gateway not available. Please try again later.');
+        return;
+      }
+
+      // Razorpay options
+      const options = {
+        description: 'Add money to wallet',
+        image: 'https://your-logo-url.com/logo.png', // Replace with your logo URL
+        currency: 'INR',
+        key: razorpayKey,
+        amount: Number(amount) * 100, // Amount in paise
+        name: 'Budzee Gaming',
+        order_id: order.orderId,
+        prefill: {
+          email: user?.email || '',
+          contact: user?.phoneNumber?.replace('+91', '') || '',
+          name: user?.name || 'Player'
+        },
+        theme: { color: '#FF6B35' }
+      };
+
+      // Open Razorpay checkout
+      const paymentData = await RazorpayCheckout.open(options);
+      console.log('Payment Success:', paymentData);
+
+      // Verify payment with backend
+      const verificationResult = await verifyDeposit({
+        razorpay_order_id: paymentData.razorpay_order_id,
+        razorpay_payment_id: paymentData.razorpay_payment_id,
+        razorpay_signature: paymentData.razorpay_signature,
+        amount: Number(amount)
+      });
+
+      if (verificationResult.success) {
+        Alert.alert('Success', `₹${amount} has been added to your wallet!`);
+        setShowDeposit(false);
+        setAmount('');
+        fetchBalance();
+        fetchTransactions();
+      } else {
+        Alert.alert('Error', verificationResult.message || 'Payment verification failed');
+      }
+
+    } catch (error) {
+      console.error('Payment error:', error);
+      
+      if (error.code === 'PAYMENT_CANCELLED') {
+        Alert.alert('Payment Cancelled', 'You cancelled the payment.');
+      } else if (error.code === 'NETWORK_ERROR') {
+        Alert.alert('Network Error', 'Please check your internet connection and try again.');
+      } else {
+        Alert.alert('Payment Failed', error.description || 'Something went wrong. Please try again.');
+      }
     }
   };
 
@@ -351,56 +407,42 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   balanceAmount: { 
-    fontSize: 36, 
+    fontSize: theme.fonts.sizes.xxxl, 
     fontWeight: 'bold', 
     color: theme.colors.primary, 
-    marginBottom: theme.spacing.lg,
-    textShadowColor: 'rgba(255, 107, 53, 0.3)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
+    marginBottom: theme.spacing.sm,
   },
   actionRow: { 
     flexDirection: 'row', 
     justifyContent: 'space-between', 
     width: '100%',
-    gap: theme.spacing.md,
-  },
-  actionBtn: {
-    flex: 1,
-    borderRadius: theme.borderRadius.lg,
-    paddingVertical: theme.spacing.md,
-    paddingHorizontal: theme.spacing.md,
-    alignItems: 'center',
-    ...theme.shadows.medium,
+    gap: theme.spacing.sm,
   },
   depositBtn: {
     backgroundColor: theme.colors.success,
+    flex: 1,
   },
   withdrawBtn: {
     backgroundColor: theme.colors.secondary,
+    flex: 1,
   },
   actionIcon: {
-    fontSize: 20,
-    marginBottom: theme.spacing.xs,
-  },
-  actionBtnText: { 
-    color: theme.colors.textPrimary, 
-    fontSize: theme.fonts.sizes.sm, 
-    fontWeight: 'bold',
+    fontSize: 16,
+    marginRight: theme.spacing.xs,
   },
   statsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingHorizontal: theme.spacing.lg,
-    marginBottom: theme.spacing.lg,
+    marginHorizontal: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
+    gap: theme.spacing.xs,
   },
   statCard: {
     backgroundColor: theme.colors.surfaceCard,
-    borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.md,
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing.sm,
     alignItems: 'center',
     flex: 1,
-    marginHorizontal: theme.spacing.xs,
     ...theme.shadows.small,
     borderWidth: 1,
     borderColor: 'rgba(78, 205, 196, 0.2)',
@@ -422,14 +464,8 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   transactionsSection: {
-    paddingHorizontal: theme.spacing.lg,
-    marginBottom: theme.spacing.xl,
-  },
-  sectionTitle: { 
-    fontSize: theme.fonts.sizes.lg, 
-    fontWeight: 'bold', 
-    color: theme.colors.textPrimary, 
-    marginBottom: theme.spacing.md,
+    marginHorizontal: theme.spacing.md,
+    marginBottom: theme.spacing.lg,
   },
   loadingContainer: {
     alignItems: 'center',
@@ -441,18 +477,19 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.md,
   },
   transactionsList: {
-    gap: theme.spacing.sm,
+    gap: theme.spacing.xs,
   },
   txnItem: {
     backgroundColor: theme.colors.surfaceCard,
-    borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.md,
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing.sm,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     ...theme.shadows.small,
     borderWidth: 1,
     borderColor: 'rgba(255, 107, 53, 0.1)',
+    marginBottom: theme.spacing.xs,
   },
   txnLeft: {
     flexDirection: 'row',
@@ -460,8 +497,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   txnIcon: {
-    fontSize: 24,
-    marginRight: theme.spacing.md,
+    fontSize: 20,
+    marginRight: theme.spacing.sm,
   },
   txnDetails: {
     flex: 1,
@@ -469,19 +506,19 @@ const styles = StyleSheet.create({
   txnType: { 
     fontWeight: 'bold', 
     color: theme.colors.textDark,
-    fontSize: theme.fonts.sizes.md,
+    fontSize: theme.fonts.sizes.sm,
   },
   txnDate: { 
     color: theme.colors.textLight, 
-    fontSize: theme.fonts.sizes.sm,
-    marginTop: theme.spacing.xs,
+    fontSize: theme.fonts.sizes.xs,
+    marginTop: 2,
   },
   txnRight: {
     alignItems: 'flex-end',
   },
   txnAmount: { 
     fontWeight: 'bold', 
-    fontSize: theme.fonts.sizes.md,
+    fontSize: theme.fonts.sizes.sm,
   },
   txnAmountPositive: {
     color: theme.colors.success,
@@ -490,8 +527,8 @@ const styles = StyleSheet.create({
     color: theme.colors.danger,
   },
   txnStatus: { 
-    fontSize: theme.fonts.sizes.xs,
-    marginTop: theme.spacing.xs,
+    fontSize: 10,
+    marginTop: 2,
     fontWeight: '500',
   },
   statusCompleted: {
@@ -505,23 +542,23 @@ const styles = StyleSheet.create({
   },
   emptyContainer: {
     alignItems: 'center',
-    paddingVertical: theme.spacing.xxl,
+    paddingVertical: theme.spacing.lg,
   },
   emptyIcon: {
-    fontSize: 48,
-    marginBottom: theme.spacing.md,
+    fontSize: 32,
+    marginBottom: theme.spacing.sm,
   },
   emptyText: { 
     textAlign: 'center', 
     color: theme.colors.textSecondary, 
-    fontSize: theme.fonts.sizes.lg,
+    fontSize: theme.fonts.sizes.md,
     fontWeight: 'bold',
-    marginBottom: theme.spacing.sm,
+    marginBottom: theme.spacing.xs,
   },
   emptySubtext: {
     textAlign: 'center', 
     color: theme.colors.textLight, 
-    fontSize: theme.fonts.sizes.md,
+    fontSize: theme.fonts.sizes.sm,
   },
   // Modal Styles
   modalContainer: {
@@ -529,34 +566,34 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: theme.spacing.lg,
+    padding: theme.spacing.md,
   },
   modalScrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: theme.spacing.lg,
+    padding: theme.spacing.md,
   },
   modalContent: {
     backgroundColor: theme.colors.surfaceCard,
-    borderRadius: theme.borderRadius.xl,
-    padding: theme.spacing.lg,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.md,
     width: '100%',
-    maxWidth: 400,
+    maxWidth: 350,
     ...theme.shadows.large,
     borderWidth: 2,
     borderColor: 'rgba(255, 107, 53, 0.3)',
   },
   modalHeader: {
     alignItems: 'center',
-    marginBottom: theme.spacing.lg,
+    marginBottom: theme.spacing.md,
   },
   modalIcon: {
-    fontSize: 48,
-    marginBottom: theme.spacing.sm,
+    fontSize: 32,
+    marginBottom: theme.spacing.xs,
   },
   modalTitle: { 
-    fontSize: theme.fonts.sizes.xl, 
+    fontSize: theme.fonts.sizes.lg, 
     fontWeight: 'bold', 
     color: theme.colors.primary, 
     marginBottom: theme.spacing.xs,
@@ -568,7 +605,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   modalForm: {
-    marginBottom: theme.spacing.lg,
+    marginBottom: theme.spacing.md,
   },
   modalInput: {
     ...commonStyles.input,

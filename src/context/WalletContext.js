@@ -1,6 +1,7 @@
 import React, {createContext, useContext, useReducer, useEffect} from 'react';
 import {useAuth} from './AuthContext';
 import config from '../config/config';
+import { makeApiRequest, handleApiError, validateResponse } from '../utils/apiUtils';
 
 const WalletContext = createContext();
 
@@ -123,20 +124,17 @@ export const WalletProvider = ({children}) => {
 
   const createDepositOrder = async (amount) => {
     try {
-      const response = await fetch(`${config.API_BASE_URL}/payment/create-deposit-order`, {
+      const data = await makeApiRequest(`${config.API_BASE_URL}/payment/create-deposit-order`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({amount}),
       });
 
-      const data = await response.json();
-      return data;
+      return validateResponse(data);
     } catch (error) {
-      console.error('Create deposit order error:', error);
-      return {success: false, message: 'Network error. Please try again.'};
+      return handleApiError(error);
     }
   };
 

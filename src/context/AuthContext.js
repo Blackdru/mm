@@ -1,6 +1,7 @@
 import React, {createContext, useContext, useReducer, useEffect} from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import config from '../config/config';
+import { makeApiRequest, handleApiError, validateResponse } from '../utils/apiUtils';
 
 const AuthContext = createContext();
 
@@ -73,35 +74,15 @@ export const AuthProvider = ({children}) => {
       console.log('Sending OTP to:', phoneNumber);
       console.log('API URL:', `${config.API_BASE_URL}/auth/send-otp`);
       
-      const response = await fetch(`${config.API_BASE_URL}/auth/send-otp`, {
+      const data = await makeApiRequest(`${config.API_BASE_URL}/auth/send-otp`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({phoneNumber}),
-        timeout: 15000, // 15 second timeout
       });
 
-      console.log('Response status:', response.status);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('HTTP Error:', response.status, errorText);
-        return {
-          success: false, 
-          message: `Server error (${response.status}). Please try again.`
-        };
-      }
-
-      const data = await response.json();
       console.log('Send OTP response:', data);
-      return data;
+      return validateResponse(data);
     } catch (error) {
-      console.error('Send OTP error:', error);
-      if (error.name === 'TypeError' && error.message.includes('Network request failed')) {
-        return {success: false, message: 'Network error. Please check your internet connection.'};
-      }
-      return {success: false, message: 'Network error. Please try again.'};
+      return handleApiError(error);
     }
   };
 
@@ -109,27 +90,11 @@ export const AuthProvider = ({children}) => {
     try {
       console.log('Verifying OTP for:', phoneNumber, 'OTP:', otp);
       
-      const response = await fetch(`${config.API_BASE_URL}/auth/verify-otp`, {
+      const data = await makeApiRequest(`${config.API_BASE_URL}/auth/verify-otp`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({phoneNumber, otp}),
-        timeout: 15000, // 15 second timeout
       });
 
-      console.log('Verify OTP response status:', response.status);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('HTTP Error:', response.status, errorText);
-        return {
-          success: false, 
-          message: `Server error (${response.status}). Please try again.`
-        };
-      }
-
-      const data = await response.json();
       console.log('Verify OTP response:', data);
 
       if (data.success) {
@@ -145,13 +110,9 @@ export const AuthProvider = ({children}) => {
         console.log('User authenticated successfully:', data.user.id);
       }
 
-      return data;
+      return validateResponse(data);
     } catch (error) {
-      console.error('Verify OTP error:', error);
-      if (error.name === 'TypeError' && error.message.includes('Network request failed')) {
-        return {success: false, message: 'Network error. Please check your internet connection.'};
-      }
-      return {success: false, message: 'Network error. Please try again.'};
+      return handleApiError(error);
     }
   };
 

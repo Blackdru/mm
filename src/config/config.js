@@ -1,15 +1,21 @@
 // Configuration file for the Ludo Game App
+import { Platform } from 'react-native';
 
-// Function to get local IP address for development
+// Function to get appropriate server URL based on environment
 const getDevServerUrl = () => {
-  // For Android emulator
   if (__DEV__) {
-    // Try different common development URLs
-    return 'http://10.0.2.2:8080'; // Android emulator default
-    // For physical device, you might need to use your computer's IP
-    // return 'http://192.168.1.100:8080'; // Replace with your actual IP
+    // Development environment
+    if (Platform.OS === 'android') {
+      // Android emulator uses 10.0.2.2 to access host machine
+      return 'http://10.0.2.2:8080';
+    } else {
+      // iOS simulator can use localhost
+      return 'http://localhost:8080';
+    }
+  } else {
+    // Production environment
+    return 'https://test.fivlog.space';
   }
-  return 'http://localhost:8080';
 };
 
 const config = {
@@ -24,7 +30,7 @@ const config = {
     ANDROID_EMULATOR: 'http://10.0.2.2:8080',
     IOS_SIMULATOR: 'http://localhost:8080',
     PHYSICAL_DEVICE: 'http://192.168.1.100:8080', // Replace with your computer's IP
-    PRODUCTION: 'https://your-production-domain.com'
+    PRODUCTION: 'https://test.fivlog.space'
   },
   
   // API URLs for different environments
@@ -32,7 +38,7 @@ const config = {
     ANDROID_EMULATOR: 'http://10.0.2.2:8080/api',
     IOS_SIMULATOR: 'http://localhost:8080/api',
     PHYSICAL_DEVICE: 'http://192.168.1.100:8080/api', // Replace with your computer's IP
-    PRODUCTION: 'https://your-production-domain.com/api'
+    PRODUCTION: 'https://test.fivlog.space/api'
   },
 
   // Socket.io configuration
@@ -53,7 +59,7 @@ const config = {
 
   // Payment configuration
   PAYMENT_CONFIG: {
-    RAZORPAY_KEY_ID: 'rzp_test_ILhEsA5oxLGYj5',
+    RAZORPAY_KEY_ID: 'rzp_live_MCNGWPQMBHG7sC',
     CURRENCY: 'INR',
     ENTRY_FEES: {
       2: 10, // 2 players: ₹10

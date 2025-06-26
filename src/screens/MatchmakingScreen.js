@@ -7,6 +7,7 @@ import {
   Alert,
   ActivityIndicator,
   Animated,
+  BackHandler,
 } from 'react-native';
 import {useAuth} from '../context/AuthContext';
 import io from 'socket.io-client';
@@ -23,15 +24,36 @@ const MatchmakingScreen = ({navigation, route}) => {
 
   useEffect(() => {
     connectSocket();
-    startWaitTimer();
+    const timerCleanup = startWaitTimer();
     startPulseAnimation();
+
+    // Handle Android back button
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      handleBackPress();
+      return true; // Prevent default behavior
+    });
 
     return () => {
       if (socket) {
         socket.disconnect();
       }
+      if (timerCleanup) {
+        timerCleanup();
+      }
+      backHandler.remove();
     };
   }, []);
+
+  const handleBackPress = () => {
+    Alert.alert(
+      'Cancel Matchmaking',
+      'Are you sure you want to cancel? Your entry fee will be refunded.',
+      [
+        {text: 'No', style: 'cancel'},
+        {text: 'Yes', onPress: leaveMatchmaking, style: 'destructive'},
+      ]
+    );
+  };
 
   const connectSocket = () => {
     const socketConnection = io(config.SERVER_URL, {
@@ -117,7 +139,7 @@ const MatchmakingScreen = ({navigation, route}) => {
     }, 1000);
 
     // Auto-cancel after 5 minutes
-    setTimeout(() => {
+    const timeout = setTimeout(() => {
       clearInterval(interval);
       if (status === 'searching') {
         Alert.alert(
@@ -135,7 +157,10 @@ const MatchmakingScreen = ({navigation, route}) => {
       }
     }, 300000); // 5 minutes
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      clearTimeout(timeout);
+    };
   };
 
   const startPulseAnimation = () => {
@@ -276,16 +301,7 @@ const MatchmakingScreen = ({navigation, route}) => {
       <View style={styles.buttonContainer}>
         <TouchableOpacity
           style={styles.cancelButton}
-          onPress={() => {
-            Alert.alert(
-              'Cancel Matchmaking',
-              'Are you sure you want to cancel? Your entry fee will be refunded.',
-              [
-                {text: 'No', style: 'cancel'},
-                {text: 'Yes', onPress: leaveMatchmaking, style: 'destructive'},
-              ]
-            );
-          }}>
+          onPress={handleBackPress}>
           <Text style={styles.cancelButtonText}>Cancel & Refund</Text>
         </TouchableOpacity>
       </View>
