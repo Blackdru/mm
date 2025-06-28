@@ -33,6 +33,8 @@ const MemoryGameScreen = ({ route, navigation }) => {
   const [gameStatus, setGameStatus] = useState('waiting'); // waiting, playing, ended
   const [selectedCards, setSelectedCards] = useState([]);
   const [isMyTurn, setIsMyTurn] = useState(false);
+  const [turnTimeRemaining, setTurnTimeRemaining] = useState(0);
+  const [currentTurnPlayer, setCurrentTurnPlayer] = useState(null);
   
   // Animation refs
   const cardAnimations = useRef({}).current;
@@ -50,6 +52,10 @@ const MemoryGameScreen = ({ route, navigation }) => {
     socket.on('MEMORY_GAME_ERROR', handleError);
     socket.on('MEMORY_PLAYER_JOINED', handlePlayerJoined);
     socket.on('MEMORY_CURRENT_STATE', handleCurrentState);
+    socket.on('MEMORY_PLAYER_LEFT', handlePlayerLeft);
+    socket.on('MEMORY_TURN_TIMER', handleTurnTimer);
+    socket.on('MEMORY_TURN_TIMER_UPDATE', handleTurnTimerUpdate);
+    socket.on('MEMORY_TURN_SKIPPED', handleTurnSkipped);
 
     // Initialize animations for cards
     initializeCardAnimations();
@@ -64,6 +70,10 @@ const MemoryGameScreen = ({ route, navigation }) => {
       socket.off('MEMORY_GAME_ERROR');
       socket.off('MEMORY_PLAYER_JOINED');
       socket.off('MEMORY_CURRENT_STATE');
+      socket.off('MEMORY_PLAYER_LEFT');
+      socket.off('MEMORY_TURN_TIMER');
+      socket.off('MEMORY_TURN_TIMER_UPDATE');
+      socket.off('MEMORY_TURN_SKIPPED');
     };
   }, [socket]);
 
@@ -75,10 +85,13 @@ const MemoryGameScreen = ({ route, navigation }) => {
 
   const handleGameStarted = (data) => {
     console.log('Memory game started:', data);
+    console.log('Players data:', data.players);
+    console.log('Route params - playerId:', playerId, 'playerName:', playerName);
+    
     setGameBoard(data.gameBoard);
-    setPlayers(data.players);
+    setPlayers(data.players || []);
     setGameStatus('playing');
-    setScores({ score1: 0, score2: 0 });
+    setScores(data.initialScores || data.scores || { score1: 0, score2: 0 });
     setMatchedCards([]);
     setFlippedCards([]);
     setSelectedCards([]);
@@ -88,6 +101,33 @@ const MemoryGameScreen = ({ route, navigation }) => {
     console.log('Current turn:', data);
     setCurrentTurn(data.currentPlayer);
     setIsMyTurn(data.currentPlayer === playerId);
+    setCurrentTurnPlayer(data.currentPlayerName || 'Unknown');
+    
+    // Update players list if provided
+    if (data.players) {
+      setPlayers(data.players);
+    }
+  };
+
+  const handleTurnTimer = (data) => {
+    console.log('Turn timer started:', data);
+    setTurnTimeRemaining(data.timeLeft);
+    setCurrentTurnPlayer(data.playerName);
+  };
+
+  const handleTurnTimerUpdate = (data) => {
+    console.log('Turn timer update:', data);
+    setTurnTimeRemaining(data.timeLeft);
+  };
+
+  const handleTurnSkipped = (data) => {
+    console.log('Turn skipped:', data);
+    setCurrentTurnPlayer(data.nextPlayerName);
+    Alert.alert(
+      'Turn Skipped',
+      `${data.nextPlayerName}'s turn now (previous player took too long)`,
+      [{ text: 'OK' }]
+    );
   };
 
   const handleOpenCard = (data) => {
@@ -110,7 +150,7 @@ const MemoryGameScreen = ({ route, navigation }) => {
 
   const handleCardsMatched = (data) => {
     console.log('Cards matched:', data);
-    const { positions, playerId: matchingPlayer } = data;
+    const { positions, playerId: matchingPlayer, scores } = data;
     
     // Update matched cards
     setMatchedCards(prev => [...prev, ...positions]);
@@ -121,6 +161,11 @@ const MemoryGameScreen = ({ route, navigation }) => {
         positions.includes(index) ? { ...card, isMatched: true } : card
       )
     );
+
+    // Update scores if provided
+    if (scores) {
+      setScores(scores);
+    }
 
     // Clear flipped cards
     setFlippedCards([]);
@@ -158,11 +203,12 @@ const MemoryGameScreen = ({ route, navigation }) => {
     setGameStatus('ended');
     
     const winner = data.winner;
-    const winnerName = players.find(p => p.id === winner)?.name || 'Unknown';
+    const winnerPlayer = players.find(p => p.id === winner);
+    const winnerName = winnerPlayer?.name || winnerPlayer?.playerName || 'Unknown';
     
     Alert.alert(
       'Game Over!',
-      `Winner: ${winnerName}\nFinal Scores:\nPlayer 1: ${data.finalScores.score1}\nPlayer 2: ${data.finalScores.score2}`,
+      `Winner: ${winnerName}\nFinal Scores:\nPlayer 1: ${data.finalScores?.score1 || 0}\nPlayer 2: ${data.finalScores?.score2 || 0}`,
       [
         { text: 'Play Again', onPress: startNewGame },
         { text: 'Back to Menu', onPress: () => navigation.goBack() }
@@ -172,7 +218,12 @@ const MemoryGameScreen = ({ route, navigation }) => {
 
   const handleCardsMismatched = (data) => {
     console.log('Cards mismatched:', data);
-    const { positions } = data;
+    const { positions, nextPlayerName } = data;
+    
+    // Update current turn player if provided
+    if (nextPlayerName) {
+      setCurrentTurnPlayer(nextPlayerName);
+    }
     
     setTimeout(() => {
       // Animate cards flipping back
@@ -206,6 +257,12 @@ const MemoryGameScreen = ({ route, navigation }) => {
     setGameBoard(data.gameBoard);
     setScores(data.scores || {});
     setCurrentTurn(data.currentPlayerId);
+    
+    // Update players if provided
+    if (data.players) {
+      console.log('Updating players from current state:', data.players);
+      setPlayers(data.players);
+    }
   };
 
   const handlePlayerLeft = (data) => {
@@ -216,6 +273,7 @@ const MemoryGameScreen = ({ route, navigation }) => {
     );
   };
 
+  
   const animateCardFlip = (position, reverse = false) => {
     const animation = cardAnimations[position];
     Animated.timing(animation, {
@@ -234,18 +292,55 @@ const MemoryGameScreen = ({ route, navigation }) => {
     setSelectedCards(prev => [...prev, position]);
 
     // Emit card selection to server
-    socket.emit('SELECT_MEMORY_CARD', {
-      roomId,
-      playerId,
-      position,
-    });
+    if (socket && socket.connected) {
+      socket.emit('SELECT_MEMORY_CARD', {
+        roomId,
+        playerId,
+        position,
+      });
+    } else {
+      console.log('Socket not connected, cannot select card');
+    }
   };
 
   const startNewGame = () => {
-    socket.emit('START_MEMORY_GAME', {
-      roomId,
-      playerId,
-    });
+    if (socket && socket.connected) {
+      socket.emit('START_MEMORY_GAME', {
+        roomId,
+        playerId,
+      });
+    }
+  };
+
+  const handleLeaveGame = () => {
+    Alert.alert(
+      'Leave Game',
+      'Are you sure you want to leave the game?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Leave', 
+          style: 'destructive',
+          onPress: () => {
+            // Emit leave game event
+            if (socket && socket.connected) {
+              socket.emit('LEAVE_MEMORY_GAME', {
+                roomId,
+                playerId,
+              });
+            }
+            
+            // Navigate back safely
+            try {
+              navigation.goBack();
+            } catch (error) {
+              console.log('Navigation error:', error);
+              navigation.navigate('Home');
+            }
+          }
+        }
+      ]
+    );
   };
 
   const renderCard = ({ item, index }) => {
@@ -286,8 +381,25 @@ const MemoryGameScreen = ({ route, navigation }) => {
   };
 
   const getCurrentPlayerName = () => {
+    // Use the currentTurnPlayer state if available (from backend)
+    if (currentTurnPlayer) {
+      return currentTurnPlayer;
+    }
+    
+    if (!currentTurn || !players || players.length === 0) {
+      return 'Unknown';
+    }
     const currentPlayer = players.find(p => p.id === currentTurn);
-    return currentPlayer?.name || 'Unknown';
+    if (currentPlayer) {
+      return currentPlayer.name || currentPlayer.playerName || currentPlayer.username || 'Unknown';
+    }
+    
+    // Fallback: if currentTurn matches playerId, use playerName from route
+    if (currentTurn === playerId) {
+      return playerName || 'You';
+    }
+    
+    return 'Unknown';
   };
 
   if (gameStatus === 'waiting') {
@@ -308,12 +420,43 @@ const MemoryGameScreen = ({ route, navigation }) => {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Mind Morga</Text>
+        
         <View style={styles.scoreContainer}>
           <Text style={styles.scoreText}>
-            {players[0]?.name || 'Player 1'}: {scores.score1}
+            {(() => {
+              console.log('Score display - players:', players);
+              console.log('Score display - playerId:', playerId);
+              console.log('Score display - playerName:', playerName);
+              
+              // Try to find current player first
+              const currentPlayer = players.find(p => p.id === playerId);
+              if (currentPlayer) {
+                const name = currentPlayer.name || currentPlayer.playerName || currentPlayer.username || playerName || 'You';
+                console.log('Found current player:', currentPlayer, 'using name:', name);
+                return name;
+              }
+              // Fallback to first player or use playerName from route
+              const player1 = players[0];
+              const name = player1?.name || player1?.playerName || player1?.username || playerName || 'Player 1';
+              console.log('Using player1 fallback:', player1, 'using name:', name);
+              return name;
+            })()}: {scores.score1 || 0}
           </Text>
           <Text style={styles.scoreText}>
-            {players[1]?.name || 'Player 2'}: {scores.score2}
+            {(() => {
+              // Try to find other player
+              const otherPlayer = players.find(p => p.id !== playerId);
+              if (otherPlayer) {
+                const name = otherPlayer.name || otherPlayer.playerName || otherPlayer.username || 'Opponent';
+                console.log('Found other player:', otherPlayer, 'using name:', name);
+                return name;
+              }
+              // Fallback to second player
+              const player2 = players[1];
+              const name = player2?.name || player2?.playerName || player2?.username || 'Player 2';
+              console.log('Using player2 fallback:', player2, 'using name:', name);
+              return name;
+            })()}: {scores.score2 || 0}
           </Text>
         </View>
       </View>
@@ -326,6 +469,18 @@ const MemoryGameScreen = ({ route, navigation }) => {
         ]}>
           {isMyTurn ? "Your Turn!" : `${getCurrentPlayerName()}'s Turn`}
         </Text>
+        
+        {/* Turn Timer */}
+        {turnTimeRemaining > 0 && (
+          <View style={styles.turnTimerContainer}>
+            <Text style={[
+              styles.turnTimerText,
+              turnTimeRemaining <= 3 && styles.urgentTimer
+            ]}>
+              ⏱️ {turnTimeRemaining}s
+            </Text>
+          </View>
+        )}
       </View>
 
       {/* Game Board */}
@@ -344,7 +499,7 @@ const MemoryGameScreen = ({ route, navigation }) => {
       <View style={styles.controls}>
         <TouchableOpacity
           style={styles.controlButton}
-          onPress={() => navigation.goBack()}
+          onPress={handleLeaveGame}
         >
           <Text style={styles.controlButtonText}>Leave Game</Text>
         </TouchableOpacity>
@@ -374,7 +529,7 @@ const styles = StyleSheet.create({
     color: '#ccc',
     marginBottom: 20,
   },
-  scoreContainer: {
+    scoreContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     width: '100%',
@@ -399,6 +554,23 @@ const styles = StyleSheet.create({
   },
   myTurnText: {
     color: '#4caf50',
+  },
+  turnTimerContainer: {
+    marginTop: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    backgroundColor: '#2c3e50',
+    borderRadius: 8,
+  },
+  turnTimerText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#3498db',
+    textAlign: 'center',
+  },
+  urgentTimer: {
+    color: '#e74c3c',
+    fontSize: 18,
   },
   gameBoard: {
     flex: 1,

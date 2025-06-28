@@ -118,30 +118,42 @@ const MatchmakingScreen = ({navigation, route}) => {
 
   const redirectToGame = () => {
     const playerIdToUse = playerId || user?.id;
-    console.log('Redirecting to game:', game.id, 'with playerId:', playerIdToUse, 'gameId:', gameId);
+    const playerNameToUse = user?.name || user?.phoneNumber || 'Player';
+    
+    console.log('🎮 Redirecting to game:', {
+      gameType: game.id,
+      gameId: gameId,
+      playerId: playerIdToUse,
+      playerName: playerNameToUse,
+      userFromAuth: user,
+      playersFromGame: players
+    });
     
     // Route to appropriate game screen based on game type
     if (game.id === 'memory') {
       navigation.navigate('MemoryGame', {
         roomId: gameId,
         playerId: playerIdToUse,
-        playerName: user?.name || 'Player',
+        playerName: playerNameToUse,
         socket: socket,
+        players: players, // Pass matched players data
       });
     } else if (game.id === 'fast_ludo') {
       navigation.navigate('FastLudoGame', {
         gameId: gameId,
         playerId: playerIdToUse,
-        playerName: user?.name || 'Player',
+        playerName: playerNameToUse,
         socket: socket,
+        players: players, // Pass matched players data
       });
     } else if (game.id === 'classic_ludo') {
       navigation.navigate('Game', {
         gameId: gameId,
         playerId: playerIdToUse,
-        playerName: user?.name || 'Player',
+        playerName: playerNameToUse,
         socket: socket,
         game: game,
+        players: players, // Pass matched players data
       });
     }
   };

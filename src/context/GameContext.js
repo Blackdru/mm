@@ -116,7 +116,13 @@ export const GameProvider = ({children}) => {
       dispatch({type: 'SET_PLAYER_ID', payload: data.userId});
       if (data.userName) {
         dispatch({type: 'SET_PLAYER_NAME', payload: data.userName});
+        console.log('👤 Player name set from server:', data.userName);
       }
+      console.log('📋 Connection data received:', {
+        userId: data.userId,
+        userName: data.userName,
+        userPhone: data.userPhone
+      });
     });
 
     socket.on('disconnect', (reason) => {
@@ -147,9 +153,21 @@ export const GameProvider = ({children}) => {
       dispatch({type: 'SET_MATCHMAKING_STATUS', payload: 'found'});
       dispatch({type: 'SET_GAME_ID', payload: data.gameId});
       dispatch({type: 'SET_PLAYER_ID', payload: data.yourPlayerId});
+      if (data.yourPlayerName) {
+        dispatch({type: 'SET_PLAYER_NAME', payload: data.yourPlayerName});
+        console.log('👤 Player name updated from matchFound:', data.yourPlayerName);
+      }
       if (data.players) {
         dispatch({type: 'UPDATE_PLAYERS', payload: data.players});
+        console.log('👥 Players data received:', data.players);
       }
+      console.log('🎯 Match details:', {
+        gameId: data.gameId,
+        gameType: data.gameType,
+        yourPlayerId: data.yourPlayerId,
+        yourPlayerName: data.yourPlayerName,
+        playersCount: data.players?.length || 0
+      });
     });
 
     // Game room events

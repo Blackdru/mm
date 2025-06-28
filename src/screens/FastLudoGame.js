@@ -7,6 +7,7 @@ import {
   Alert,
   Dimensions,
 } from 'react-native';
+import LudoBoard from '../components/LudoBoard';
 
 const { width, height } = Dimensions.get('window');
 
@@ -70,11 +71,13 @@ const FastLudoGameScreen = ({ route, navigation }) => {
   };
 
   const handleGameEnded = (data) => {
-    const winnerName = players.find(p => p.id === data.winner)?.name || 'Unknown';
+    const winnerPlayer = players.find(p => p.id === data.winner);
+    const winnerName = winnerPlayer?.name || winnerPlayer?.playerName || 'Unknown';
     Alert.alert(
       'Game Over!',
-      `Winner: ${winnerName}\nReason: ${data.reason === 'timer' ? 'Time Up!' : 'All tokens finished'}\n\nFinal Scores:\n${Object.keys(data.finalScores).map(pid => {
-        const pName = players.find(p => p.id === pid)?.name || pid;
+      `Winner: ${winnerName}\nReason: ${data.reason === 'timer' ? 'Time Up!' : 'All tokens finished'}\n\nFinal Scores:\n${Object.keys(data.finalScores || {}).map(pid => {
+        const player = players.find(p => p.id === pid);
+        const pName = player?.name || player?.playerName || pid;
         return `${pName}: ${data.finalScores[pid]} points`;
       }).join('\n')}`,
       [
@@ -124,8 +127,8 @@ const FastLudoGameScreen = ({ route, navigation }) => {
   };
 
   const getCurrentPlayerName = () => {
-    if (!players[currentTurn]) return 'Unknown';
-    return players[currentTurn].name;
+    if (!players || players.length === 0 || !players[currentTurn]) return 'Unknown';
+    return players[currentTurn].name || players[currentTurn].playerName || 'Unknown';
   };
 
   const getMyColor = () => {
@@ -161,7 +164,7 @@ const FastLudoGameScreen = ({ route, navigation }) => {
         <View style={styles.scoresRow}>
           {players.map((player, index) => (
             <View key={player.id} style={styles.scoreItem}>
-              <Text style={styles.playerName}>{player.name}</Text>
+              <Text style={styles.playerName}>{player.name || player.playerName || `Player ${index + 1}`}</Text>
               <Text style={styles.playerScore}>{scores[player.id] || 0}</Text>
             </View>
           ))}
@@ -178,39 +181,17 @@ const FastLudoGameScreen = ({ route, navigation }) => {
         )}
       </View>
 
-      {/* Game Board Placeholder */}
+      {/* Game Board */}
       <View style={styles.gameBoard}>
-        <Text style={styles.boardText}>Fast Ludo Board</Text>
-        <Text style={styles.boardSubtext}>All tokens start outside!</Text>
-        
-        {/* Simple piece representation */}
-        {getMyColor() && gameState[getMyColor()] && (
-          <View style={styles.piecesContainer}>
-            <Text style={styles.piecesTitle}>Your Tokens ({getMyColor()})</Text>
-            <View style={styles.piecesRow}>
-              {gameState[getMyColor()].pieces.map((piece, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={[
-                    styles.piece,
-                    piece.position === 'finished' && styles.finishedPiece
-                  ]}
-                  onPress={() => movePiece(index)}
-                  disabled={!diceValue || piece.position === 'finished'}
-                >
-                  <Text style={styles.pieceText}>
-                    {piece.position === 'finished' ? '🏆' : '🔴'}
-                  </Text>
-                  <Text style={styles.pieceInfo}>
-                    {piece.position === 'finished' ? 'Done' : 
-                     piece.position === 'homeStretch' ? `H${piece.boardPosition}` :
-                     `P${piece.boardPosition}`}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-        )}
+        <LudoBoard 
+          gameState={gameState}
+          currentPlayer={currentTurn}
+          diceValue={diceValue}
+          onPieceMove={movePiece}
+          players={players}
+          playerId={playerId}
+          canMove={canRollDice}
+        />
       </View>
 
       {/* Controls */}
@@ -227,7 +208,32 @@ const FastLudoGameScreen = ({ route, navigation }) => {
 
         <TouchableOpacity
           style={styles.leaveButton}
-          onPress={() => navigation.navigate('Home')}
+          onPress={() => {
+            Alert.alert(
+              'Leave Game',
+              'Are you sure you want to leave the game?',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                { 
+                  text: 'Leave', 
+                  style: 'destructive',
+                  onPress: () => {
+                    if (socket && socket.connected) {
+                      socket.emit('LEAVE_FAST_LUDO_GAME', {
+                        gameId,
+                        playerId,
+                      });
+                    }
+                    try {
+                      navigation.navigate('Home');
+                    } catch (error) {
+                      console.log('Navigation error:', error);
+                    }
+                  }
+                }
+              ]
+            );
+          }}
         >
           <Text style={styles.leaveButtonText}>Leave Game</Text>
         </TouchableOpacity>
@@ -306,54 +312,11 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#16213e',
     borderRadius: 10,
-    padding: 20,
+    padding: 5,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  boardText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 10,
-  },
-  boardSubtext: {
-    fontSize: 14,
-    color: '#ccc',
-    marginBottom: 20,
-  },
-  piecesContainer: {
-    width: '100%',
-  },
-  piecesTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 10,
-    textAlign: 'center',
-  },
-  piecesRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  piece: {
-    backgroundColor: '#0f3460',
-    borderRadius: 8,
-    padding: 10,
-    alignItems: 'center',
-    minWidth: 60,
-  },
-  finishedPiece: {
-    backgroundColor: '#4caf50',
-  },
-  pieceText: {
-    fontSize: 20,
-    marginBottom: 5,
-  },
-  pieceInfo: {
-    fontSize: 10,
-    color: '#ccc',
-  },
-  controls: {
+    controls: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginTop: 20,
