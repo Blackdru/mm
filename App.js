@@ -14,11 +14,16 @@ import MemoryGameScreen from './src/screens/MemoryGame';
 import FastLudoGameScreen from './src/screens/FastLudoGame';
 import WalletScreen from './src/screens/WalletScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
+import ReferralScreen from './src/screens/ReferralScreen';
 
 // Context
 import {AuthProvider, useAuth} from './src/context/AuthContext';
 import {GameProvider} from './src/context/GameContext';
 import {WalletProvider} from './src/context/WalletContext';
+
+// Components
+import ErrorBoundary from './src/components/ErrorBoundary';
+import ConnectionStatus from './src/components/ConnectionStatus';
 
 // Theme
 import { theme } from './src/styles/theme';
@@ -80,6 +85,8 @@ const AppNavigator = () => {
         return <WalletScreen navigation={{navigate}} />;
       case 'Profile':
         return <ProfileScreen navigation={{navigate}} />;
+      case 'Referral':
+        return <ReferralScreen navigation={{navigate}} />;
       default:
         return <HomeScreen navigation={{navigate}} />;
     }
@@ -94,7 +101,10 @@ const AppNavigator = () => {
       />
       <SafeAreaView style={styles.safeArea}>
         <GradientBackground>
-          {renderScreen()}
+          <ConnectionStatus />
+          <ErrorBoundary navigation={{navigate}}>
+            {renderScreen()}
+          </ErrorBoundary>
         </GradientBackground>
       </SafeAreaView>
     </SafeAreaProvider>

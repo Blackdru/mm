@@ -10,20 +10,36 @@ import {
   BackHandler,
 } from 'react-native';
 import {useAuth} from '../context/AuthContext';
-import io from 'socket.io-client';
-import config from '../config/config';
+import {useGame} from '../context/GameContext';
 
 const MatchmakingScreen = ({navigation, route}) => {
   const {game, playerCount, entryFee} = route.params;
-  const {token} = useAuth();
-  const [socket, setSocket] = useState(null);
-  const [status, setStatus] = useState('connecting');
+  const {user} = useAuth();
+  const {
+    socket,
+    connectionStatus,
+    matchmakingStatus,
+    gameId,
+    playerId,
+    players,
+    error,
+    joinMatchmaking,
+    leaveMatchmaking,
+    clearError
+  } = useGame();
+  
   const [playersFound, setPlayersFound] = useState(0);
   const [waitTime, setWaitTime] = useState(0);
   const [pulseAnim] = useState(new Animated.Value(1));
+  const [countdown, setCountdown] = useState(null);
+  const [showCountdown, setShowCountdown] = useState(false);
 
   useEffect(() => {
-    connectSocket();
+    // Start matchmaking when component mounts and socket is connected
+    if (connectionStatus === 'connected' && matchmakingStatus === 'idle') {
+      startMatchmaking();
+    }
+    
     const timerCleanup = startWaitTimer();
     startPulseAnimation();
 
@@ -34,15 +50,34 @@ const MatchmakingScreen = ({navigation, route}) => {
     });
 
     return () => {
-      if (socket) {
-        socket.disconnect();
-      }
       if (timerCleanup) {
         timerCleanup();
       }
       backHandler.remove();
     };
-  }, []);
+  }, [connectionStatus]);
+
+  // Handle matchmaking status changes
+  useEffect(() => {
+    if (matchmakingStatus === 'found' && gameId) {
+      handleMatchFound();
+    }
+  }, [matchmakingStatus, gameId]);
+
+  // Handle errors
+  useEffect(() => {
+    if (error) {
+      Alert.alert('Error', error, [
+        {
+          text: 'OK',
+          onPress: () => {
+            clearError();
+            navigation.navigate('Home');
+          },
+        },
+      ]);
+    }
+  }, [error]);
 
   const handleBackPress = () => {
     Alert.alert(
@@ -50,108 +85,69 @@ const MatchmakingScreen = ({navigation, route}) => {
       'Are you sure you want to cancel? Your entry fee will be refunded.',
       [
         {text: 'No', style: 'cancel'},
-        {text: 'Yes', onPress: leaveMatchmaking, style: 'destructive'},
+        {text: 'Yes', onPress: handleLeaveMatchmaking, style: 'destructive'},
       ]
     );
   };
 
-  const connectSocket = () => {
-    const socketConnection = io(config.SERVER_URL, {
-      auth: {
-        token: token,
-      },
-    });
-
-    socketConnection.on('connect', () => {
-      console.log('Connected to matchmaking');
-      setStatus('searching');
-      joinMatchmaking();
-    });
-
-    socketConnection.on('matchmakingStatus', (data) => {
-      console.log('Matchmaking status:', data);
-      if (data.status === 'waiting') {
-        setStatus('searching');
-      }
-    });
-
-    socketConnection.on('matchFound', (data) => {
-      console.log('Match found:', data);
-      setStatus('found');
-      Alert.alert(
-        'Match Found!',
-        'A game has been found. Joining now...',
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              // Route to appropriate game screen based on game type
-              if (game.id === 'memory') {
-                navigation.navigate('MemoryGame', {
-                  roomId: data.game.id,
-                  playerId: data.playerId || 'player1',
-                  playerName: data.playerName || 'Player',
-                  socket: socketConnection,
-                });
-              } else if (game.id === 'fast_ludo') {
-                navigation.navigate('FastLudoGame', {
-                  gameId: data.game.id,
-                  playerId: data.playerId || 'player1',
-                  playerName: data.playerName || 'Player',
-                  socket: socketConnection,
-                });
-              } else {
-                navigation.navigate('Game', {
-                  gameId: data.game.id,
-                  game: data.game,
-                });
-              }
-            },
-          },
-        ]
-      );
-    });
-
-    socketConnection.on('error', (error) => {
-      console.error('Matchmaking error:', error);
-      Alert.alert('Error', error.message, [
-        {
-          text: 'OK',
-          onPress: () => navigation.goBack(),
-        },
-      ]);
-    });
-
-    socketConnection.on('disconnect', () => {
-      console.log('Disconnected from matchmaking');
-      if (status !== 'found') {
-        setStatus('disconnected');
-      }
-    });
-
-    setSocket(socketConnection);
+  const startMatchmaking = () => {
+    const gameType = game.id === 'memory' ? 'MEMORY' : 
+                    game.id === 'fast_ludo' ? 'FAST_LUDO' : 
+                    game.id === 'classic_ludo' ? 'CLASSIC_LUDO' : 'CLASSIC_LUDO';
+    
+    console.log('Starting matchmaking for:', gameType, playerCount, entryFee);
+    joinMatchmaking(gameType, playerCount, entryFee);
   };
 
-  const joinMatchmaking = () => {
-    if (socket) {
-      const gameType = game.id === 'memory' ? 'MEMORY' : 
-                      game.id === 'fast_ludo' ? 'FAST_LUDO' :  'LUDO';
+  const handleMatchFound = () => {
+    console.log('Match found! GameId:', gameId, 'PlayerId:', playerId || user?.id);
+    setShowCountdown(true);
+    let countdownValue = 5;
+    setCountdown(countdownValue);
+
+    const countdownInterval = setInterval(() => {
+      countdownValue--;
+      setCountdown(countdownValue);
       
-      socket.emit('joinMatchmaking', {
-        gameType: gameType,
-        maxPlayers: playerCount,
-        entryFee: entryFee,
+      if (countdownValue <= 0) {
+        clearInterval(countdownInterval);
+        redirectToGame();
+      }
+    }, 1000);
+  };
+
+  const redirectToGame = () => {
+    const playerIdToUse = playerId || user?.id;
+    console.log('Redirecting to game:', game.id, 'with playerId:', playerIdToUse, 'gameId:', gameId);
+    
+    // Route to appropriate game screen based on game type
+    if (game.id === 'memory') {
+      navigation.navigate('MemoryGame', {
+        roomId: gameId,
+        playerId: playerIdToUse,
+        playerName: user?.name || 'Player',
+        socket: socket,
+      });
+    } else if (game.id === 'fast_ludo') {
+      navigation.navigate('FastLudoGame', {
+        gameId: gameId,
+        playerId: playerIdToUse,
+        playerName: user?.name || 'Player',
+        socket: socket,
+      });
+    } else if (game.id === 'classic_ludo') {
+      navigation.navigate('Game', {
+        gameId: gameId,
+        playerId: playerIdToUse,
+        playerName: user?.name || 'Player',
+        socket: socket,
+        game: game,
       });
     }
   };
 
-  const leaveMatchmaking = () => {
-    if (socket) {
-      socket.emit('leaveMatchmaking');
-      setTimeout(() => {
-        socket.disconnect();
-      }, 100);
-    }
+  const handleLeaveMatchmaking = () => {
+    leaveMatchmaking();
     navigation.navigate('Home');
   };
 
@@ -160,10 +156,10 @@ const MatchmakingScreen = ({navigation, route}) => {
       setWaitTime((prev) => prev + 1);
     }, 1000);
 
-    // Auto-cancel after 1 minutes
+    // Auto-cancel after 2 minutes for testing
     const timeout = setTimeout(() => {
       clearInterval(interval);
-      if (status === 'searching') {
+      if (matchmakingStatus === 'searching') {
         Alert.alert(
           'Matchmaking Timeout',
           'Unable to find players. Your entry fee will be refunded.',
@@ -171,13 +167,13 @@ const MatchmakingScreen = ({navigation, route}) => {
             {
               text: 'OK',
               onPress: () => {
-                leaveMatchmaking();
+                handleLeaveMatchmaking();
               },
             },
           ]
         );
       }
-    }, 60000); // 1 min
+    }, 120000); // 2 minutes
 
     return () => {
       clearInterval(interval);
@@ -199,7 +195,7 @@ const MatchmakingScreen = ({navigation, route}) => {
           useNativeDriver: true,
         }),
       ]).start(() => {
-        if (status === 'searching') {
+        if (matchmakingStatus === 'searching') {
           pulse();
         }
       });
@@ -214,29 +210,43 @@ const MatchmakingScreen = ({navigation, route}) => {
   };
 
   const getStatusMessage = () => {
-    switch (status) {
-      case 'connecting':
-        return 'Connecting to matchmaking...';
+    if (connectionStatus === 'connecting') {
+      return 'Connecting to matchmaking...';
+    }
+    if (connectionStatus === 'disconnected') {
+      return 'Connection lost. Please try again.';
+    }
+    
+    switch (matchmakingStatus) {
+      case 'idle':
+        return 'Preparing matchmaking...';
       case 'searching':
         return 'Searching for players...';
       case 'found':
         return 'Match found! Joining game...';
-      case 'disconnected':
-        return 'Connection lost. Please try again.';
+      case 'error':
+        return 'Error occurred. Please try again.';
       default:
         return 'Preparing matchmaking...';
     }
   };
 
   const getStatusColor = () => {
-    switch (status) {
-      case 'connecting':
-        return '#f39c12';
+    if (connectionStatus === 'connecting') {
+      return '#f39c12';
+    }
+    if (connectionStatus === 'disconnected') {
+      return '#e74c3c';
+    }
+    
+    switch (matchmakingStatus) {
+      case 'idle':
+        return '#95a5a6';
       case 'searching':
         return '#3498db';
       case 'found':
         return '#27ae60';
-      case 'disconnected':
+      case 'error':
         return '#e74c3c';
       default:
         return '#95a5a6';
@@ -270,7 +280,14 @@ const MatchmakingScreen = ({navigation, route}) => {
           {getStatusMessage()}
         </Text>
         
-        {status === 'searching' && (
+        {showCountdown && countdown !== null && (
+          <View style={styles.countdownContainer}>
+            <Text style={styles.countdownTitle}>Match Found!</Text>
+            <Text style={styles.countdownText}>Game starts in {countdown} seconds</Text>
+          </View>
+        )}
+        
+        {(matchmakingStatus === 'searching' || connectionStatus === 'connecting') && !showCountdown && (
           <ActivityIndicator
             size="large"
             color={getStatusColor()}
@@ -441,6 +458,25 @@ const styles = StyleSheet.create({
   cancelButtonText: {
     color: '#ffffff',
     fontSize: 16,
+    fontWeight: '600',
+  },
+  countdownContainer: {
+    alignItems: 'center',
+    marginTop: 20,
+    backgroundColor: '#27ae60',
+    borderRadius: 12,
+    padding: 20,
+    marginHorizontal: 20,
+  },
+  countdownTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    marginBottom: 8,
+  },
+  countdownText: {
+    fontSize: 16,
+    color: '#ffffff',
     fontWeight: '600',
   },
 });

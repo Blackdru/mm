@@ -124,17 +124,43 @@ export const WalletProvider = ({children}) => {
 
   const createDepositOrder = async (amount) => {
     try {
-      const data = await makeApiRequest(`${config.API_BASE_URL}/payment/create-deposit-order`, {
+      console.log('Creating deposit order for amount:', amount);
+      
+      const response = await fetch(`${config.API_BASE_URL}/payment/create-deposit-order`, {
         method: 'POST',
         headers: {
+          'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({amount}),
+        body: JSON.stringify({ amount }),
       });
 
-      return validateResponse(data);
+      console.log('Deposit order response status:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Deposit order error:', errorText);
+        throw new Error(`Server error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('Deposit order response:', data);
+      
+      if (data.success) {
+        return {
+          success: true,
+          orderId: data.order.id,
+          order: data.order
+        };
+      } else {
+        throw new Error(data.message || 'Failed to create order');
+      }
     } catch (error) {
-      return handleApiError(error);
+      console.error('Create deposit order error:', error);
+      return {
+        success: false,
+        message: error.message || 'Failed to create deposit order'
+      };
     }
   };
 

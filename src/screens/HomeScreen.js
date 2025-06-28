@@ -41,7 +41,7 @@ const HomeScreen = ({navigation}) => {
 
   const games = [
     {
-      id: 'ludo',
+      id: 'classic_ludo',
       name: 'Classic Ludo',
       description: 'Traditional board game for 2-4 players',
       image: '🎲',
@@ -66,13 +66,6 @@ const HomeScreen = ({navigation}) => {
       minPlayers: 2,
       maxPlayers: 2,
       available: true,
-    },
-    {
-      id: 'snake_ladder',
-      name: 'Snake & Ladder',
-      description: 'Coming Soon',
-      image: '🐍',
-      available: false,
     },
   ];
 
@@ -144,9 +137,11 @@ const HomeScreen = ({navigation}) => {
             <Text style={styles.actionText}>Profile</Text>
           </TouchableOpacity>
           
-          <TouchableOpacity style={[styles.actionButton, styles.leaderboardBtn]}>
-            <Text style={styles.actionIcon}>🏆</Text>
-            <Text style={styles.actionText}>Leaderboard</Text>
+          <TouchableOpacity 
+            style={[styles.actionButton, styles.referralBtn]}
+            onPress={() => navigation.navigate('Referral')}>
+            <Text style={styles.actionIcon}>🎁</Text>
+            <Text style={styles.actionText}>Refer & Earn</Text>
           </TouchableOpacity>
           
           <TouchableOpacity style={[styles.actionButton, styles.statsBtn]}>
@@ -317,7 +312,7 @@ const styles = StyleSheet.create({
   profileBtn: {
     backgroundColor: theme.colors.secondary,
   },
-  leaderboardBtn: {
+  referralBtn: {
     backgroundColor: theme.colors.accent,
   },
   statsBtn: {

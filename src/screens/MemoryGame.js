@@ -43,12 +43,13 @@ const MemoryGameScreen = ({ route, navigation }) => {
     // Socket event listeners
     socket.on('MEMORY_GAME_STARTED', handleGameStarted);
     socket.on('MEMORY_GAME_CURRENT_TURN', handleCurrentTurn);
-    socket.on('OPEN_CARD', handleOpenCard);
-    socket.on('CARDS_MATCHED', handleCardsMatched);
-    socket.on('CLOSE_CARDS', handleCloseCards);
-    socket.on('MEMORY_GAME_SCORE_UPDATE', handleScoreUpdate);
-    socket.on('END_GAME', handleEndGame);
-    socket.on('PLAYER_LEFT', handlePlayerLeft);
+    socket.on('MEMORY_CARD_OPENED', handleOpenCard);
+    socket.on('MEMORY_CARDS_MATCHED', handleCardsMatched);
+    socket.on('MEMORY_CARDS_MISMATCHED', handleCardsMismatched);
+    socket.on('MEMORY_GAME_ENDED', handleEndGame);
+    socket.on('MEMORY_GAME_ERROR', handleError);
+    socket.on('MEMORY_PLAYER_JOINED', handlePlayerJoined);
+    socket.on('MEMORY_CURRENT_STATE', handleCurrentState);
 
     // Initialize animations for cards
     initializeCardAnimations();
@@ -56,12 +57,13 @@ const MemoryGameScreen = ({ route, navigation }) => {
     return () => {
       socket.off('MEMORY_GAME_STARTED');
       socket.off('MEMORY_GAME_CURRENT_TURN');
-      socket.off('OPEN_CARD');
-      socket.off('CARDS_MATCHED');
-      socket.off('CLOSE_CARDS');
-      socket.off('MEMORY_GAME_SCORE_UPDATE');
-      socket.off('END_GAME');
-      socket.off('PLAYER_LEFT');
+      socket.off('MEMORY_CARD_OPENED');
+      socket.off('MEMORY_CARDS_MATCHED');
+      socket.off('MEMORY_CARDS_MISMATCHED');
+      socket.off('MEMORY_GAME_ENDED');
+      socket.off('MEMORY_GAME_ERROR');
+      socket.off('MEMORY_PLAYER_JOINED');
+      socket.off('MEMORY_CURRENT_STATE');
     };
   }, [socket]);
 
@@ -166,6 +168,44 @@ const MemoryGameScreen = ({ route, navigation }) => {
         { text: 'Back to Menu', onPress: () => navigation.goBack() }
       ]
     );
+  };
+
+  const handleCardsMismatched = (data) => {
+    console.log('Cards mismatched:', data);
+    const { positions } = data;
+    
+    setTimeout(() => {
+      // Animate cards flipping back
+      positions.forEach(pos => animateCardFlip(pos, true));
+      
+      // Update game board to hide cards
+      setGameBoard(prev => 
+        prev.map((card, index) => 
+          positions.includes(index) ? { ...card, isFlipped: false } : card
+        )
+      );
+
+      // Clear tracking
+      setFlippedCards([]);
+      setSelectedCards([]);
+    }, 1000);
+  };
+
+  const handleError = (data) => {
+    console.error('Memory game error:', data);
+    Alert.alert('Error', data.message);
+  };
+
+  const handlePlayerJoined = (data) => {
+    console.log('Player joined:', data);
+    // Update player list or show notification
+  };
+
+  const handleCurrentState = (data) => {
+    console.log('Current state received:', data);
+    setGameBoard(data.gameBoard);
+    setScores(data.scores || {});
+    setCurrentTurn(data.currentPlayerId);
   };
 
   const handlePlayerLeft = (data) => {
