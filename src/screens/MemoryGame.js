@@ -38,12 +38,31 @@ const MemoryGameScreen = ({ route, navigation }) => {
   const [prizePool, setPrizePool] = useState(0);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [gameResults, setGameResults] = useState(null);
+  const [connectionStatus, setConnectionStatus] = useState('connected');
+  const [lastActivity, setLastActivity] = useState(Date.now());
+  const [isProcessingCard, setIsProcessingCard] = useState(false);
   
   // Animation refs
   const cardAnimations = useRef({}).current;
+  const lastCardPressTime = useRef(0);
 
   useEffect(() => {
     if (!socket) return;
+
+    // Connection monitoring
+    socket.on('connect', () => {
+      setConnectionStatus('connected');
+      setLastActivity(Date.now());
+    });
+    
+    socket.on('disconnect', () => {
+      setConnectionStatus('disconnected');
+    });
+    
+    socket.on('reconnect', () => {
+      setConnectionStatus('connected');
+      setLastActivity(Date.now());
+    });
 
     // Socket event listeners
     socket.on('MEMORY_GAME_STARTED', handleGameStarted);
@@ -98,6 +117,7 @@ const MemoryGameScreen = ({ route, navigation }) => {
     console.log('Prize pool:', data.prizePool);
     console.log('Route params - playerId:', playerId, 'playerName:', playerName);
     
+    setLastActivity(Date.now());
     setGameBoard(data.gameBoard);
     setPlayers(data.players || []);
     setGameStatus('playing');
@@ -158,6 +178,8 @@ const MemoryGameScreen = ({ route, navigation }) => {
     console.log('Card opened:', data);
     const { position, symbol } = data;
     
+    setLastActivity(Date.now());
+    
     // Update game board with revealed card
     setGameBoard(prev => 
       prev.map((card, index) => 
@@ -170,6 +192,9 @@ const MemoryGameScreen = ({ route, navigation }) => {
     
     // Track flipped cards
     setFlippedCards(prev => [...prev, position]);
+    
+    // Reset processing state
+    setIsProcessingCard(false);
   };
 
   const handleCardsMatched = (data) => {
@@ -223,30 +248,83 @@ const MemoryGameScreen = ({ route, navigation }) => {
   };
 
   const handleEndGame = (data) => {
-    console.log('Game ended:', data);
-    setGameStatus('ended');
-    
-    // Prepare leaderboard data
-    const leaderboardData = players.map(player => {
-      const playerScore = data.finalScores?.[player.id] || 0;
-      const isWinner = player.id === data.winnerId;
-      const winAmount = isWinner ? (prizePool * 0.9) : 0;
+    try {
+      console.log('Game ended:', data);
+      setGameStatus('ended');
       
-      return {
-        id: player.id,
-        name: player.name || player.playerName || 'Unknown',
-        score: playerScore,
-        isWinner,
-        winAmount
-      };
-    }).sort((a, b) => b.score - a.score); // Sort by score descending
-    
-    setGameResults({
-      leaderboard: leaderboardData,
-      prizePool,
-      totalPlayers: players.length
-    });
-    setShowLeaderboard(true);
+      // Safely extract prize pool with fallback
+      const safePrizePool = typeof data.prizePool === 'number' ? data.prizePool : (prizePool || 0);
+      
+      // Use leaderboard data from backend if available, otherwise create it
+      let leaderboardData;
+      if (data.leaderboard && Array.isArray(data.leaderboard) && data.leaderboard.length > 0) {
+        leaderboardData = data.leaderboard.map(player => {
+          const isWinner = player.id === data.winnerId;
+          const winAmount = isWinner ? (safePrizePool * 0.9) : 0;
+          
+          return {
+            id: player.id || 'unknown',
+            name: player.name || 'Unknown',
+            score: typeof player.score === 'number' ? player.score : 0,
+            isWinner,
+            winAmount
+          };
+        });
+      } else {
+        // Fallback to creating leaderboard from players and scores
+        const playersToUse = Array.isArray(data.players) ? data.players : (Array.isArray(players) ? players : []);
+        leaderboardData = playersToUse.map(player => {
+          const playerScore = (data.finalScores && data.finalScores[player.id]) || 0;
+          const isWinner = player.id === data.winnerId;
+          const winAmount = isWinner ? (safePrizePool * 0.9) : 0;
+          
+          return {
+            id: player.id || 'unknown',
+            name: player.name || player.playerName || 'Unknown',
+            score: typeof playerScore === 'number' ? playerScore : 0,
+            isWinner,
+            winAmount
+          };
+        }).sort((a, b) => b.score - a.score);
+      }
+      
+      // Ensure we have at least one player in leaderboard
+      if (!leaderboardData || leaderboardData.length === 0) {
+        leaderboardData = [{
+          id: 'unknown',
+          name: 'Unknown Player',
+          score: 0,
+          isWinner: true,
+          winAmount: safePrizePool * 0.9
+        }];
+      }
+      
+      setGameResults({
+        leaderboard: leaderboardData,
+        prizePool: safePrizePool,
+        totalPlayers: data.totalPlayers || players.length || 1,
+        gameStats: data.gameStats || {},
+        reason: data.reason || null
+      });
+      setShowLeaderboard(true);
+    } catch (error) {
+      console.error('Error handling end game:', error);
+      // Show a basic leaderboard even if there's an error
+      setGameResults({
+        leaderboard: [{
+          id: 'error',
+          name: 'Game Ended',
+          score: 0,
+          isWinner: true,
+          winAmount: 0
+        }],
+        prizePool: 0,
+        totalPlayers: 1,
+        gameStats: {},
+        reason: 'Error processing game results'
+      });
+      setShowLeaderboard(true);
+    }
   };
 
   const handleCardsMismatched = (data) => {
@@ -258,44 +336,38 @@ const MemoryGameScreen = ({ route, navigation }) => {
       setCurrentTurnPlayer(nextPlayerName);
     }
     
-    // Flip back immediately (within 1 second as requested)
-    setTimeout(() => {
-      // Animate cards flipping back
-      positions.forEach(pos => animateCardFlip(pos, true));
-      
-      // Update game board to hide cards
-      setGameBoard(prev => 
-        prev.map((card, index) => 
-          positions.includes(index) ? { ...card, isFlipped: false } : card
-        )
-      );
+    // Flip back immediately - no delay needed since backend handles timing
+    positions.forEach(pos => animateCardFlip(pos, true));
+    
+    // Update game board to hide cards immediately
+    setGameBoard(prev => 
+      prev.map((card, index) => 
+        positions.includes(index) ? { ...card, isFlipped: false } : card
+      )
+    );
 
-      // Clear tracking
-      setFlippedCards([]);
-      setSelectedCards([]);
-    }, 1000); // Keep at 1 second as requested
+    // Clear tracking immediately
+    setFlippedCards([]);
+    setSelectedCards([]);
   };
 
   const handleCardsNoMatch = (data) => {
     console.log('Cards no match:', data);
     const { positions } = data;
     
-    // Flip back immediately (within 1 second as requested)
-    setTimeout(() => {
-      // Animate cards flipping back
-      positions.forEach(pos => animateCardFlip(pos, true));
-      
-      // Update game board to hide cards
-      setGameBoard(prev => 
-        prev.map((card, index) => 
-          positions.includes(index) ? { ...card, isFlipped: false } : card
-        )
-      );
+    // Flip back immediately - no delay needed since backend handles timing
+    positions.forEach(pos => animateCardFlip(pos, true));
+    
+    // Update game board to hide cards immediately
+    setGameBoard(prev => 
+      prev.map((card, index) => 
+        positions.includes(index) ? { ...card, isFlipped: false } : card
+      )
+    );
 
-      // Clear tracking
-      setFlippedCards([]);
-      setSelectedCards([]);
-    }, 1000); // Keep at 1 second as requested
+    // Clear tracking immediately
+    setFlippedCards([]);
+    setSelectedCards([]);
   };
 
   const handleTurnChanged = (data) => {
@@ -319,10 +391,17 @@ const MemoryGameScreen = ({ route, navigation }) => {
 
   const handleCurrentState = (data) => {
     console.log('Current state received:', data);
-    setGameBoard(data.gameBoard);
+    setLastActivity(Date.now());
+    
+    // Restore game board state
+    setGameBoard(data.gameBoard || []);
     setScores(data.scores || {});
     setCurrentTurn(data.currentPlayerId);
     setPrizePool(data.prizePool || 0);
+    
+    // Restore selected cards and processing state
+    setSelectedCards(data.selectedCards || []);
+    setIsProcessingCard(data.processingCards || false);
     
     // Update players if provided
     if (data.players) {
@@ -336,6 +415,10 @@ const MemoryGameScreen = ({ route, navigation }) => {
       setIsMyTurn(data.currentPlayer.id === playerId);
       setCurrentTurnPlayer(data.currentPlayer.name);
     }
+    
+    // Clear any frozen states after reconnection
+    setFlippedCards([]);
+    setMatchedCards(data.gameBoard ? data.gameBoard.filter((card, index) => card.isMatched).map((card, index) => index) : []);
   };
 
   const handlePlayerLeft = (data) => {
@@ -349,15 +432,38 @@ const MemoryGameScreen = ({ route, navigation }) => {
   
   const animateCardFlip = (position, reverse = false) => {
     const animation = cardAnimations[position];
-    Animated.timing(animation, {
-      toValue: reverse ? 0 : 1,
-      duration: 300,
-      useNativeDriver: true,
-    }).start();
+    if (animation) {
+      Animated.timing(animation, {
+        toValue: reverse ? 0 : 1,
+        duration: 250, // Faster animation for better responsiveness
+        useNativeDriver: true,
+      }).start();
+    }
   };
 
   const handleCardPress = (position) => {
+    const now = Date.now();
+    
+    // Debounce rapid clicks (300ms minimum between clicks)
+    if (now - lastCardPressTime.current < 300) {
+      console.log('Card press too rapid, ignoring');
+      return;
+    }
+    lastCardPressTime.current = now;
+    
     console.log('Card press attempt:', { position, isMyTurn, gameStatus, flippedCards, matchedCards, selectedCards });
+    
+    // Check if already processing a card
+    if (isProcessingCard) {
+      console.log('Already processing a card');
+      return;
+    }
+    
+    // Check connection status
+    if (connectionStatus !== 'connected') {
+      console.log('Not connected to server');
+      return;
+    }
     
     if (!isMyTurn || gameStatus !== 'playing') {
       console.log('Not your turn or game not playing');
@@ -382,6 +488,12 @@ const MemoryGameScreen = ({ route, navigation }) => {
 
     console.log('Emitting card selection to server');
     
+    // Set processing state
+    setIsProcessingCard(true);
+    
+    // Optimistically update selected cards for immediate feedback
+    setSelectedCards(prev => [...prev, position]);
+    
     // Emit card selection to server
     if (socket && socket.connected) {
       socket.emit('SELECT_MEMORY_CARD', {
@@ -389,8 +501,15 @@ const MemoryGameScreen = ({ route, navigation }) => {
         playerId,
         position,
       });
+      setLastActivity(Date.now());
+      
+      // Reset processing state after a short delay
+      setTimeout(() => setIsProcessingCard(false), 500);
     } else {
       console.log('Socket not connected, cannot select card');
+      // Revert optimistic update
+      setSelectedCards(prev => prev.filter(p => p !== position));
+      setIsProcessingCard(false);
     }
   };
 
@@ -527,6 +646,15 @@ const MemoryGameScreen = ({ route, navigation }) => {
       <View style={styles.header}>
         <Text style={styles.title}>Mind Morga</Text>
         
+        {/* Connection Status */}
+        {connectionStatus !== 'connected' && (
+          <View style={styles.connectionStatus}>
+            <Text style={styles.connectionStatusText}>
+              {connectionStatus === 'disconnected' ? '🔴 Disconnected' : '🟡 Reconnecting...'}
+            </Text>
+          </View>
+        )}
+        
         {/* Prize Pool Display */}
         <View style={styles.prizePoolContainer}>
           <Text style={styles.prizePoolLabel}>Prize Pool</Text>
@@ -608,9 +736,15 @@ const MemoryGameScreen = ({ route, navigation }) => {
           <View style={styles.leaderboardModal}>
             <Text style={styles.leaderboardTitle}>🏆 Game Results</Text>
             
+            {gameResults.reason && (
+              <View style={styles.gameReasonContainer}>
+                <Text style={styles.gameReasonText}>{gameResults.reason}</Text>
+              </View>
+            )}
+            
             <View style={styles.prizePoolDisplay}>
               <Text style={styles.prizePoolDisplayText}>
-                Total Prize Pool: ₹{gameResults.prizePool.toFixed(2)}
+                Total Prize Pool: ₹{(gameResults.prizePool || 0).toFixed(2)}
               </Text>
             </View>
 
@@ -713,13 +847,15 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   myTurnContainer: {
-    backgroundColor: '#1b5e20',
-    borderColor: '#4caf50',
-    shadowColor: '#4caf50',
+    backgroundColor: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    borderColor: '#00e676',
+    borderWidth: 3,
+    shadowColor: '#00e676',
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 10,
-    elevation: 10,
+    shadowOpacity: 0.8,
+    shadowRadius: 15,
+    elevation: 15,
+    transform: [{ scale: 1.02 }],
   },
   turnText: {
     fontSize: 18,
@@ -727,11 +863,13 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   myTurnText: {
-    color: '#4caf50',
-    fontSize: 20,
-    textShadowColor: '#4caf50',
+    color: '#00e676',
+    fontSize: 22,
+    fontWeight: '900',
+    textShadowColor: '#00e676',
     textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 10,
+    textShadowRadius: 15,
+    letterSpacing: 1,
   },
   turnTimerContainer: {
     marginTop: 8,
@@ -962,6 +1100,32 @@ const styles = StyleSheet.create({
   controlButtonText: {
     color: '#fff',
     fontWeight: 'bold',
+  },
+  connectionStatus: {
+    backgroundColor: '#ff5722',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    marginBottom: 10,
+  },
+  connectionStatusText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  gameReasonContainer: {
+    backgroundColor: '#ff9800',
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 15,
+    alignItems: 'center',
+  },
+  gameReasonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
 });
 
