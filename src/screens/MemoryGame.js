@@ -10,6 +10,7 @@ import {
   FlatList,
 } from 'react-native';
 import { io } from 'socket.io-client';
+import { useGame } from '../context/GameContext';
 
 const { width, height } = Dimensions.get('window');
 
@@ -22,6 +23,7 @@ const CARD_SYMBOLS = [
 
 const MemoryGameScreen = ({ route, navigation }) => {
   const { roomId, playerId, playerName, socket } = route.params;
+  const { cleanupGameState, cleanupAfterGameEnd } = useGame();
   
   // Game state
   const [gameBoard, setGameBoard] = useState([]);
@@ -30,7 +32,7 @@ const MemoryGameScreen = ({ route, navigation }) => {
   const [currentTurn, setCurrentTurn] = useState(null);
   const [scores, setScores] = useState({ score1: 0, score2: 0 });
   const [players, setPlayers] = useState([]);
-  const [gameStatus, setGameStatus] = useState('waiting'); // waiting, playing, ended
+  const [gameStatus, setGameStatus] = useState('playing'); // playing, ended - removed waiting state
   const [selectedCards, setSelectedCards] = useState([]);
   const [isMyTurn, setIsMyTurn] = useState(false);
   const [turnTimeRemaining, setTurnTimeRemaining] = useState(0);
@@ -86,6 +88,17 @@ const MemoryGameScreen = ({ route, navigation }) => {
     initializeCardAnimations();
 
     return () => {
+      console.log('🧹 MemoryGame component unmounting, cleaning up...');
+      
+      // Emit leave game event
+      if (socket && socket.connected) {
+        socket.emit('LEAVE_MEMORY_GAME', {
+          roomId,
+          playerId,
+        });
+      }
+      
+      // Remove all socket listeners
       socket.off('MEMORY_GAME_STARTED');
       socket.off('MEMORY_GAME_CURRENT_TURN');
       socket.off('MEMORY_CARD_OPENED');
@@ -102,6 +115,9 @@ const MemoryGameScreen = ({ route, navigation }) => {
       socket.off('MEMORY_TURN_TIMER_UPDATE');
       socket.off('MEMORY_TIMER_UPDATE');
       socket.off('MEMORY_TURN_SKIPPED');
+      
+      // Only clean up game state, not matchmaking (preserve queue)
+      cleanupGameState();
     };
   }, [socket]);
 
@@ -144,6 +160,18 @@ const MemoryGameScreen = ({ route, navigation }) => {
       setCurrentTurnPlayer(firstPlayer.name || firstPlayer.playerName || 'Unknown');
     }
   };
+
+  // Auto-join room and start game when component mounts
+  useEffect(() => {
+    if (socket && socket.connected && roomId && playerId) {
+      console.log('Auto-joining memory game room:', roomId);
+      socket.emit('JOIN_MEMORY_ROOM', {
+        roomId,
+        playerId,
+        playerName
+      });
+    }
+  }, [socket, roomId, playerId, playerName]);
 
   const handleCurrentTurn = (data) => {
     console.log('Current turn:', data);
@@ -254,27 +282,33 @@ const MemoryGameScreen = ({ route, navigation }) => {
       
       // Safely extract prize pool with fallback
       const safePrizePool = typeof data.prizePool === 'number' ? data.prizePool : (prizePool || 0);
+      console.log('Prize pool for leaderboard:', safePrizePool);
       
       // Use leaderboard data from backend if available, otherwise create it
       let leaderboardData;
       if (data.leaderboard && Array.isArray(data.leaderboard) && data.leaderboard.length > 0) {
-        leaderboardData = data.leaderboard.map(player => {
-          const isWinner = player.id === data.winnerId;
+        console.log('Using backend leaderboard data:', data.leaderboard);
+        leaderboardData = data.leaderboard.map((player, index) => {
+          const isWinner = index === 0 || player.id === data.winnerId; // First place or explicit winner
           const winAmount = isWinner ? (safePrizePool * 0.9) : 0;
+          
+          console.log(`Player ${player.name}: isWinner=${isWinner}, winAmount=${winAmount}`);
           
           return {
             id: player.id || 'unknown',
             name: player.name || 'Unknown',
             score: typeof player.score === 'number' ? player.score : 0,
             isWinner,
-            winAmount
+            winAmount: Math.round(winAmount * 100) / 100, // Round to 2 decimal places
+            displayName: player.name || 'Unknown Player'
           };
         });
       } else {
+        console.log('Creating leaderboard from players and scores');
         // Fallback to creating leaderboard from players and scores
         const playersToUse = Array.isArray(data.players) ? data.players : (Array.isArray(players) ? players : []);
         leaderboardData = playersToUse.map(player => {
-          const playerScore = (data.finalScores && data.finalScores[player.id]) || 0;
+          const playerScore = (data.finalScores && data.finalScores[player.id]) || scores[player.id] || 0;
           const isWinner = player.id === data.winnerId;
           const winAmount = isWinner ? (safePrizePool * 0.9) : 0;
           
@@ -283,9 +317,16 @@ const MemoryGameScreen = ({ route, navigation }) => {
             name: player.name || player.playerName || 'Unknown',
             score: typeof playerScore === 'number' ? playerScore : 0,
             isWinner,
-            winAmount
+            winAmount: Math.round(winAmount * 100) / 100, // Round to 2 decimal places
+            displayName: player.name || player.playerName || `Player ${player.position + 1}` || 'Unknown Player'
           };
         }).sort((a, b) => b.score - a.score);
+        
+        // Ensure the highest scorer is marked as winner if no explicit winner
+        if (leaderboardData.length > 0 && !data.winnerId) {
+          leaderboardData[0].isWinner = true;
+          leaderboardData[0].winAmount = Math.round((safePrizePool * 0.9) * 100) / 100;
+        }
       }
       
       // Ensure we have at least one player in leaderboard
@@ -295,9 +336,12 @@ const MemoryGameScreen = ({ route, navigation }) => {
           name: 'Unknown Player',
           score: 0,
           isWinner: true,
-          winAmount: safePrizePool * 0.9
+          winAmount: Math.round((safePrizePool * 0.9) * 100) / 100,
+          displayName: 'Unknown Player'
         }];
       }
+      
+      console.log('Final leaderboard data:', leaderboardData);
       
       setGameResults({
         leaderboard: leaderboardData,
@@ -316,7 +360,8 @@ const MemoryGameScreen = ({ route, navigation }) => {
           name: 'Game Ended',
           score: 0,
           isWinner: true,
-          winAmount: 0
+          winAmount: 0,
+          displayName: 'Game Ended'
         }],
         prizePool: 0,
         totalPlayers: 1,
@@ -540,9 +585,12 @@ const MemoryGameScreen = ({ route, navigation }) => {
               });
             }
             
+            // Complete cleanup when leaving mid-game
+            cleanupAfterGameEnd();
+            
             // Navigate back safely
             try {
-              navigation.goBack();
+              navigation.navigate('Home');
             } catch (error) {
               console.log('Navigation error:', error);
               navigation.navigate('Home');
@@ -627,15 +675,15 @@ const MemoryGameScreen = ({ route, navigation }) => {
     return 'Unknown';
   };
 
-  if (gameStatus === 'waiting') {
+  // Show loading state if game hasn't started yet
+  if (!gameBoard || gameBoard.length === 0) {
     return (
       <View style={styles.container}>
-        <Text style={styles.title}>Mind Morga</Text>
-        <Text style={styles.subtitle}>Memory Card Matching</Text>
-        <Text style={styles.waitingText}>Waiting for players...</Text>
-        <TouchableOpacity style={styles.startButton} onPress={startNewGame}>
-          <Text style={styles.startButtonText}>Start Game</Text>
-        </TouchableOpacity>
+        <View style={styles.header}>
+          <Text style={styles.title}>Mind Morga</Text>
+          <Text style={styles.subtitle}>Memory Card Matching</Text>
+          <Text style={styles.waitingText}>Loading game...</Text>
+        </View>
       </View>
     );
   }
@@ -764,10 +812,10 @@ const MemoryGameScreen = ({ route, navigation }) => {
                       styles.playerNameText,
                       player.isWinner && styles.winnerText
                     ]}>
-                      {player.name}
+                      {player.displayName || player.name || 'Unknown Player'}
                     </Text>
                     <Text style={styles.playerScoreText}>
-                      Score: {player.score}
+                      Score: {typeof player.score === 'number' ? player.score : 0}
                     </Text>
                   </View>
                   
@@ -776,7 +824,7 @@ const MemoryGameScreen = ({ route, navigation }) => {
                       styles.winAmountText,
                       player.isWinner && styles.winnerAmountText
                     ]}>
-                      {player.winAmount > 0 ? `+₹${player.winAmount.toFixed(2)}` : '₹0.00'}
+                      {typeof player.winAmount === 'number' && player.winAmount > 0 ? `+₹${player.winAmount.toFixed(2)}` : '₹0.00'}
                     </Text>
                   </View>
                 </View>
@@ -787,6 +835,28 @@ const MemoryGameScreen = ({ route, navigation }) => {
               style={styles.backToMenuButton}
               onPress={() => {
                 setShowLeaderboard(false);
+                // Reset game state before going home
+                if (socket && socket.connected) {
+                  socket.emit('LEAVE_MEMORY_GAME', {
+                    roomId,
+                    playerId,
+                  });
+                }
+                // Reset all local state
+                setGameBoard([]);
+                setPlayers([]);
+                setScores({});
+                setGameStatus('playing');
+                setCurrentTurn(null);
+                setIsMyTurn(false);
+                setSelectedCards([]);
+                setFlippedCards([]);
+                setMatchedCards([]);
+                setPrizePool(0);
+                setGameResults(null);
+                // Complete cleanup after game end - this will reset matchmaking to idle
+                cleanupAfterGameEnd();
+                console.log('🏠 Navigating back to Home after game completion');
                 navigation.navigate('Home');
               }}
             >

@@ -73,7 +73,12 @@ const gameReducer = (state, action) => {
     case 'CLEAR_ERROR':
       return {...state, error: null};
     case 'RESET_GAME':
-      return {...initialState, socket: state.socket, connectionStatus: state.connectionStatus};
+      return {
+        ...initialState, 
+        socket: state.socket, 
+        connectionStatus: state.connectionStatus,
+        matchmakingStatus: 'idle' // Reset matchmaking status
+      };
     default:
       return state;
   }
@@ -149,7 +154,11 @@ export const GameProvider = ({children}) => {
     });
 
     socket.on('matchFound', (data) => {
-      console.log('🎮 Match found:', data);
+      console.log('🎮 Match found event received:', data);
+      console.log('🔍 Current matchmaking status:', state.matchmakingStatus);
+      
+      // Process match found regardless of current status to fix the issue
+      console.log('✅ Processing match found event...');
       dispatch({type: 'SET_MATCHMAKING_STATUS', payload: 'found'});
       dispatch({type: 'SET_GAME_ID', payload: data.gameId});
       dispatch({type: 'SET_PLAYER_ID', payload: data.yourPlayerId});
@@ -203,8 +212,15 @@ export const GameProvider = ({children}) => {
   // Matchmaking functions
   const joinMatchmaking = (gameType, maxPlayers, entryFee) => {
     if (state.socket && state.connectionStatus === 'connected') {
+      console.log('🎯 Starting new matchmaking - clearing previous state');
+      // Clear any previous game state before starting new matchmaking
+      dispatch({type: 'SET_GAME_ID', payload: null});
+      dispatch({type: 'SET_PLAYER_ID', payload: null});
+      dispatch({type: 'UPDATE_PLAYERS', payload: {}});
+      dispatch({type: 'SET_WINNER', payload: null});
       dispatch({type: 'SET_MATCHMAKING_STATUS', payload: 'searching'});
       dispatch({type: 'CLEAR_ERROR'});
+      
       state.socket.emit('joinMatchmaking', {
         gameType,
         maxPlayers,
@@ -217,6 +233,8 @@ export const GameProvider = ({children}) => {
     if (state.socket) {
       state.socket.emit('leaveMatchmaking');
       dispatch({type: 'SET_MATCHMAKING_STATUS', payload: 'idle'});
+      dispatch({type: 'SET_GAME_ID', payload: null});
+      dispatch({type: 'UPDATE_PLAYERS', payload: {}});
     }
   };
 
@@ -264,6 +282,56 @@ export const GameProvider = ({children}) => {
     dispatch({type: 'CLEAR_ERROR'});
   };
 
+  const cleanupGameState = () => {
+    console.log('🧹 Cleaning up game state (preserving matchmaking)...');
+    // Only clean game state, not matchmaking state
+    dispatch({type: 'SET_GAME_ID', payload: null});
+    dispatch({type: 'SET_PLAYER_ID', payload: null});
+    dispatch({type: 'UPDATE_PLAYERS', payload: {}});
+    dispatch({type: 'SET_WINNER', payload: null});
+    dispatch({type: 'UPDATE_GAME_STATE', payload: { gameStatus: 'waiting' }});
+    dispatch({type: 'CLEAR_ERROR'});
+  };
+
+  const forceResetMatchmaking = () => {
+    console.log('🔄 Force resetting matchmaking state...');
+    // Only reset matchmaking when explicitly requested (after game completion)
+    if (state.socket && state.socket.connected && state.matchmakingStatus !== 'searching') {
+      state.socket.emit('leaveMatchmaking');
+    }
+    dispatch({type: 'SET_MATCHMAKING_STATUS', payload: 'idle'});
+    dispatch({type: 'SET_GAME_ID', payload: null});
+    dispatch({type: 'SET_PLAYER_ID', payload: null});
+    dispatch({type: 'UPDATE_PLAYERS', payload: {}});
+    dispatch({type: 'SET_WINNER', payload: null});
+    dispatch({type: 'UPDATE_GAME_STATE', payload: { gameStatus: 'waiting' }});
+    dispatch({type: 'CLEAR_ERROR'});
+  };
+
+  const cleanupAfterGameEnd = () => {
+    console.log('🧹 Cleaning up after game end...');
+    // Complete cleanup only after game is finished
+    if (state.socket && state.socket.connected) {
+      state.socket.emit('leaveMatchmaking');
+    }
+    dispatch({type: 'SET_MATCHMAKING_STATUS', payload: 'idle'});
+    dispatch({type: 'SET_GAME_ID', payload: null});
+    dispatch({type: 'SET_PLAYER_ID', payload: null});
+    dispatch({type: 'UPDATE_PLAYERS', payload: {}});
+    dispatch({type: 'SET_WINNER', payload: null});
+    dispatch({type: 'UPDATE_GAME_STATE', payload: { gameStatus: 'waiting' }});
+    dispatch({type: 'CLEAR_ERROR'});
+  };
+
+  const resetToIdle = () => {
+    console.log('🔄 Resetting to idle state...');
+    dispatch({type: 'SET_MATCHMAKING_STATUS', payload: 'idle'});
+    dispatch({type: 'SET_GAME_ID', payload: null});
+    dispatch({type: 'SET_PLAYER_ID', payload: null});
+    dispatch({type: 'UPDATE_PLAYERS', payload: {}});
+    dispatch({type: 'CLEAR_ERROR'});
+  };
+
   return (
     <GameContext.Provider value={{
       ...state,
@@ -278,7 +346,11 @@ export const GameProvider = ({children}) => {
       selectCard,
       // Utilities
       resetGame,
-      clearError
+      clearError,
+      cleanupGameState,
+      forceResetMatchmaking,
+      resetToIdle,
+      cleanupAfterGameEnd
     }}>
       {children}
     </GameContext.Provider>

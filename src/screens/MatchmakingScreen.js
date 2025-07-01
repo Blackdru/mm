@@ -8,9 +8,13 @@ import {
   ActivityIndicator,
   Animated,
   BackHandler,
+  Modal,
+  Dimensions,
 } from 'react-native';
 import {useAuth} from '../context/AuthContext';
 import {useGame} from '../context/GameContext';
+
+const { width } = Dimensions.get('window');
 
 const MatchmakingScreen = ({navigation, route}) => {
   const {game, playerCount, entryFee} = route.params;
@@ -32,11 +36,14 @@ const MatchmakingScreen = ({navigation, route}) => {
   const [waitTime, setWaitTime] = useState(0);
   const [pulseAnim] = useState(new Animated.Value(1));
   const [countdown, setCountdown] = useState(null);
-  const [showCountdown, setShowCountdown] = useState(false);
+  const [showMatchFoundModal, setShowMatchFoundModal] = useState(false);
+  const [modalAnimation] = useState(new Animated.Value(0));
+  const [countdownPulse] = useState(new Animated.Value(1));
 
   useEffect(() => {
     // Start matchmaking when component mounts and socket is connected
     if (connectionStatus === 'connected' && matchmakingStatus === 'idle') {
+      console.log('🎯 Starting matchmaking - connection ready and status idle');
       startMatchmaking();
     }
     
@@ -55,14 +62,27 @@ const MatchmakingScreen = ({navigation, route}) => {
       }
       backHandler.remove();
     };
-  }, [connectionStatus]);
+  }, [connectionStatus, matchmakingStatus]); // Add matchmakingStatus to dependencies
 
   // Handle matchmaking status changes
   useEffect(() => {
+    console.log('🔍 Matchmaking status changed:', matchmakingStatus, 'GameId:', gameId);
     if (matchmakingStatus === 'found' && gameId) {
+      console.log('✅ Match found detected, handling...');
       handleMatchFound();
     }
   }, [matchmakingStatus, gameId]);
+
+  // Also listen for direct gameId changes (in case status doesn't update properly)
+  useEffect(() => {
+    if (gameId && matchmakingStatus !== 'idle') {
+      console.log('🎮 GameId received:', gameId, 'Status:', matchmakingStatus);
+      if (!showMatchFoundModal) {
+        console.log('✅ Triggering match found from gameId change');
+        handleMatchFound();
+      }
+    }
+  }, [gameId]);
 
   // Handle errors
   useEffect(() => {
@@ -102,9 +122,42 @@ const MatchmakingScreen = ({navigation, route}) => {
 
   const handleMatchFound = () => {
     console.log('Match found! GameId:', gameId, 'PlayerId:', playerId || user?.id);
-    setShowCountdown(true);
+    
+    // Show match found modal with animation
+    setShowMatchFoundModal(true);
+    
+    // Animate modal entrance
+    Animated.spring(modalAnimation, {
+      toValue: 1,
+      useNativeDriver: true,
+      tension: 100,
+      friction: 8,
+    }).start();
+    
+    // Start countdown pulse animation
+    const startCountdownPulse = () => {
+      Animated.sequence([
+        Animated.timing(countdownPulse, {
+          toValue: 1.2,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(countdownPulse, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        if (countdown > 0) {
+          startCountdownPulse();
+        }
+      });
+    };
+    
+    // Start 5-second countdown
     let countdownValue = 5;
     setCountdown(countdownValue);
+    startCountdownPulse();
 
     const countdownInterval = setInterval(() => {
       countdownValue--;
@@ -112,7 +165,15 @@ const MatchmakingScreen = ({navigation, route}) => {
       
       if (countdownValue <= 0) {
         clearInterval(countdownInterval);
-        redirectToGame();
+        // Animate modal exit
+        Animated.timing(modalAnimation, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }).start(() => {
+          setShowMatchFoundModal(false);
+          redirectToGame();
+        });
       }
     }, 1000);
   };
@@ -301,14 +362,7 @@ const MatchmakingScreen = ({navigation, route}) => {
           {getStatusMessage()}
         </Text>
         
-        {showCountdown && countdown !== null && (
-          <View style={styles.countdownContainer}>
-            <Text style={styles.countdownTitle}>Match Found!</Text>
-            <Text style={styles.countdownText}>Game starts in {countdown} seconds</Text>
-          </View>
-        )}
-        
-        {(matchmakingStatus === 'searching' || connectionStatus === 'connecting') && !showCountdown && (
+        {(matchmakingStatus === 'searching' || connectionStatus === 'connecting') && (
           <ActivityIndicator
             size="large"
             color={getStatusColor()}
@@ -343,7 +397,8 @@ const MatchmakingScreen = ({navigation, route}) => {
               ₹{(entryFee * playerCount * 0.9).toFixed(0)}
             </Text>
           </View>
-        </View>
+
+                  </View>
       </View>
 
       {/* Tips */}
@@ -365,6 +420,71 @@ const MatchmakingScreen = ({navigation, route}) => {
           <Text style={styles.cancelButtonText}>Cancel & Refund</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Match Found Modal */}
+      <Modal
+        visible={showMatchFoundModal}
+        transparent={true}
+        animationType="none"
+        onRequestClose={() => {}} // Prevent closing
+      >
+        <View style={styles.modalOverlay}>
+          <Animated.View
+            style={[
+              styles.modalContainer,
+              {
+                transform: [
+                  {
+                    scale: modalAnimation.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0.8, 1],
+                    }),
+                  },
+                ],
+                opacity: modalAnimation,
+              },
+            ]}
+          >
+            {/* Success Icon */}
+            <View style={styles.successIconContainer}>
+              <Text style={styles.successIcon}>🎉</Text>
+            </View>
+            
+            {/* Match Found Text */}
+            <Text style={styles.modalTitle}>Match Found!</Text>
+            <Text style={styles.modalSubtitle}>
+              {playerCount} players ready to play {game.name}
+            </Text>
+            
+            {/* Countdown Circle */}
+            <Animated.View 
+              style={[
+                styles.countdownCircle,
+                {
+                  transform: [{ scale: countdownPulse }]
+                }
+              ]}
+            >
+              <Text style={styles.countdownNumber}>{countdown}</Text>
+            </Animated.View>
+            
+            {/* Starting Text */}
+            <Text style={styles.startingText}>
+              Game starting in {countdown} second{countdown !== 1 ? 's' : ''}...
+            </Text>
+            
+            {/* Game Info */}
+            <View style={styles.modalGameInfo}>
+              <Text style={styles.modalGameText}>
+                🎮 {game.name} • 👥 {playerCount} Players • 💰 ₹{entryFee}
+              </Text>
+              <Text style={styles.modalPrizeText}>
+                Prize Pool: ₹{(entryFee * playerCount * 0.9).toFixed(0)}
+              </Text>
+            </View>
+          </Animated.View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -481,24 +601,89 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  countdownContainer: {
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 20,
-    backgroundColor: '#27ae60',
-    borderRadius: 12,
-    padding: 20,
-    marginHorizontal: 20,
   },
-  countdownTitle: {
-    fontSize: 20,
+  modalContainer: {
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    padding: 30,
+    alignItems: 'center',
+    marginHorizontal: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 10,
+    minWidth: Dimensions.get('window').width * 0.8,
+  },
+  successIconContainer: {
+    marginBottom: 20,
+  },
+  successIcon: {
+    fontSize: 60,
+  },
+  modalTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#27ae60',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  modalSubtitle: {
+    fontSize: 16,
+    color: '#7f8c8d',
+    marginBottom: 30,
+    textAlign: 'center',
+  },
+  countdownCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#27ae60',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+    shadowColor: '#27ae60',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  countdownNumber: {
+    fontSize: 32,
     fontWeight: 'bold',
     color: '#ffffff',
-    marginBottom: 8,
   },
-  countdownText: {
-    fontSize: 16,
-    color: '#ffffff',
+  startingText: {
+    fontSize: 18,
+    color: '#2c3e50',
+    marginBottom: 25,
+    textAlign: 'center',
     fontWeight: '600',
+  },
+  modalGameInfo: {
+    alignItems: 'center',
+    paddingTop: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#ecf0f1',
+    width: '100%',
+  },
+  modalGameText: {
+    fontSize: 16,
+    color: '#34495e',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  modalPrizeText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#27ae60',
+    textAlign: 'center',
   },
 });
 
