@@ -47,6 +47,33 @@ const PlayerSelectionScreen = ({navigation, route}) => {
           features: ['10-minute timer', 'Points-based scoring', 'All tokens start outside']
         }
       ];
+    } else if (game.id === 'snakes_ladders') {
+      return [
+        {
+          count: 2,
+          title: '2 Players',
+          description: 'Classic Snakes & Ladders duel',
+          icon: '🐍',
+          available: true,
+          features: ['Turn-based dice rolling', 'Snakes and ladders', 'Race to 100']
+        },
+        {
+          count: 3,
+          title: '3 Players',
+          description: 'Triple challenge board game',
+          icon: '🐍🪜',
+          available: true,
+          features: ['More competitive', 'Strategic gameplay', 'Higher excitement']
+        },
+        {
+          count: 4,
+          title: '4 Players',
+          description: 'Full board battle royale',
+          icon: '🐍🪜🎲',
+          available: true,
+          features: ['Maximum competition', 'Bigger prize pools', 'Epic battles']
+        }
+      ];
     } else {
       // Classic Ludo
       return [
@@ -75,21 +102,11 @@ const PlayerSelectionScreen = ({navigation, route}) => {
   const handlePlayerSelection = (playerCount) => {
     setSelectedPlayers(playerCount);
     
-    // Route to appropriate screen based on game type
-    if (game.id === 'memory') {
-      // For memory game, go directly to matchmaking
-      navigation.navigate('Matchmaking', {
-        game,
-        playerCount,
-        entryFee: 0, // Memory game is free for now
-      });
-    } else {
-      // For Ludo games, go to amount selection
-      navigation.navigate('AmountSelection', {
-        game,
-        playerCount,
-      });
-    }
+    // Route to amount selection for all games including memory
+    navigation.navigate('AmountSelection', {
+      game,
+      playerCount,
+    });
   };
 
   const handleBackPress = () => {
@@ -171,6 +188,14 @@ const PlayerSelectionScreen = ({navigation, route}) => {
                 <Text style={styles.ruleItem}>• Points for moves, kills, and finishing</Text>
                 <Text style={styles.ruleItem}>• Timer: 5 mins (2P) / 10 mins (4P)</Text>
                 <Text style={styles.ruleItem}>• Highest score when timer ends wins</Text>
+              </>
+            ) : game.id === 'snakes_ladders' ? (
+              <>
+                <Text style={styles.ruleItem}>• Roll dice to move on the board</Text>
+                <Text style={styles.ruleItem}>• Climb ladders to advance quickly</Text>
+                <Text style={styles.ruleItem}>• Avoid snakes that send you back</Text>
+                <Text style={styles.ruleItem}>• First player to reach 100 wins</Text>
+                <Text style={styles.ruleItem}>• Winner takes 90% of the prize pool</Text>
               </>
             ) : (
               <>

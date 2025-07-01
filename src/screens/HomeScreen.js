@@ -59,6 +59,15 @@ const HomeScreen = ({navigation}) => {
       available: true,
     },
     {
+      id: 'snakes_ladders',
+      name: 'Snakes & Ladders',
+      description: 'Classic board game with snakes and ladders',
+      image: '🐍',
+      minPlayers: 2,
+      maxPlayers: 4,
+      available: true,
+    },
+    {
       id: 'memory',
       name: 'Mind Morga',
       description: 'Memory card matching for 2 players',

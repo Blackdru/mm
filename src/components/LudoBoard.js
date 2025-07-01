@@ -130,6 +130,10 @@ const LudoBoard = ({
     const safePlayerIndex = Math.max(0, Math.min(3, playerIndex));
     const homePosition = homePositions[safePlayerIndex] || homePositions[0];
 
+    // Get pieces for this color from gameState
+    const colorName = colorObj.name.toLowerCase();
+    const playerPieces = gameState && gameState[colorName] ? gameState[colorName].pieces : [];
+
     return (
       <View
         key={`home-${colorObj.name || playerIndex}`}
@@ -151,20 +155,38 @@ const LudoBoard = ({
           
           {/* Game pieces */}
           <View style={styles.piecesGrid}>
-            {[1, 2, 3, 4].map(piece => (
-              <TouchableOpacity
-                key={piece}
-                style={[
-                  styles.gamePiece,
-                  {
-                    backgroundColor: colorObj.primary || '#FF4757',
-                    borderColor: colorObj.secondary || '#FF3742',
-                  }
-                ]}
-              >
-                <View style={[styles.pieceInner, { backgroundColor: colorObj.light || '#FFE8EA' }]} />
-              </TouchableOpacity>
-            ))}
+            {[0, 1, 2, 3].map(pieceIndex => {
+              const piece = playerPieces[pieceIndex];
+              const isInHome = piece && piece.position === 'home';
+              const isMyPiece = gameState && gameState[colorName] && gameState[colorName].playerId === playerId;
+              const canMovePiece = canMove && isMyPiece && isInHome && diceValue === 6;
+              
+              return (
+                <TouchableOpacity
+                  key={pieceIndex}
+                  style={[
+                    styles.gamePiece,
+                    {
+                      backgroundColor: colorObj.primary || '#FF4757',
+                      borderColor: colorObj.secondary || '#FF3742',
+                      opacity: isInHome ? 1 : 0.3,
+                    },
+                    canMovePiece && styles.movablePiece
+                  ]}
+                  onPress={() => {
+                    if (canMovePiece && onPieceMove) {
+                      onPieceMove(pieceIndex);
+                    }
+                  }}
+                  disabled={!canMovePiece}
+                >
+                  <View style={[styles.pieceInner, { backgroundColor: colorObj.light || '#FFE8EA' }]} />
+                  {isInHome && (
+                    <Text style={styles.pieceNumber}>{pieceIndex + 1}</Text>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
       </View>
@@ -204,8 +226,27 @@ const LudoBoard = ({
       borderColor = '#DEE2E6';
     }
 
+    // Check if any pieces are on this cell
+    const piecesOnCell = [];
+    if (gameState) {
+      Object.keys(gameState).forEach(colorName => {
+        if (gameState[colorName] && gameState[colorName].pieces) {
+          gameState[colorName].pieces.forEach((piece, pieceIndex) => {
+            if (piece.position === 'board' && piece.boardPosition === (row * 15 + col)) {
+              piecesOnCell.push({
+                color: colorName,
+                pieceIndex,
+                playerId: gameState[colorName].playerId,
+                canMove: canMove && gameState[colorName].playerId === playerId && diceValue
+              });
+            }
+          });
+        }
+      });
+    }
+
     return (
-      <View
+      <TouchableOpacity
         key={`cell-${row}-${col}`}
         style={[
           styles.pathCell,
@@ -216,6 +257,14 @@ const LudoBoard = ({
             height: cellSize,
           }
         ]}
+        onPress={() => {
+          // Handle piece selection on board
+          const myPiece = piecesOnCell.find(p => p.playerId === playerId);
+          if (myPiece && myPiece.canMove && onPieceMove) {
+            onPieceMove(myPiece.pieceIndex);
+          }
+        }}
+        disabled={!piecesOnCell.some(p => p.playerId === playerId && p.canMove)}
       >
         {isSafe && (
           <Text style={styles.safeMarker}>★</Text>
@@ -223,7 +272,29 @@ const LudoBoard = ({
         {isCenter && (
           <Text style={styles.centerIcon}>🏠</Text>
         )}
-      </View>
+        
+        {/* Render pieces on this cell */}
+        {piecesOnCell.map((piece, index) => {
+          const color = colors.find(c => c.name.toLowerCase() === piece.color);
+          return (
+            <View
+              key={`piece-${piece.color}-${piece.pieceIndex}`}
+              style={[
+                styles.boardPiece,
+                {
+                  backgroundColor: color?.primary || '#FF4757',
+                  borderColor: color?.secondary || '#FF3742',
+                  top: index * 3,
+                  left: index * 3,
+                },
+                piece.canMove && styles.movablePiece
+              ]}
+            >
+              <Text style={styles.boardPieceNumber}>{piece.pieceIndex + 1}</Text>
+            </View>
+          );
+        })}
+      </TouchableOpacity>
     );
   };
 
@@ -248,11 +319,6 @@ const LudoBoard = ({
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      {/* Game Header */}
-      <View style={styles.header}>
-        <Text style={styles.title}>🎲 LUDO ROYALE 🎲</Text>
-        <Text style={styles.subtitle}>Professional Edition</Text>
-      </View>
 
       {/* Current Player Indicator */}
       <View style={styles.playerIndicator}>
@@ -295,17 +361,6 @@ const LudoBoard = ({
           onRoll={handleDiceRoll} 
           disabled={onPieceMove && !canMove}
         />
-      </View>
-
-      {/* Game Instructions */}
-      <View style={styles.instructions}>
-        <Text style={styles.instructionTitle}>How to Play:</Text>
-        <Text style={styles.instructionText}>
-          • Roll 6 to move pieces out of home{'\n'}
-          • Land on ★ safe squares to protect pieces{'\n'}
-          • Get all 4 pieces to center 🏠 to win!{'\n'}
-          • Roll 6 to get another turn
-        </Text>
       </View>
     </ScrollView>
   );
@@ -438,6 +493,41 @@ const styles = StyleSheet.create({
     width: cellSize * 0.4,
     height: cellSize * 0.4,
     borderRadius: cellSize * 0.2,
+  },
+  movablePiece: {
+    borderWidth: 3,
+    borderColor: '#FFD700',
+    shadowColor: '#FFD700',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 5,
+    elevation: 8,
+  },
+  pieceNumber: {
+    position: 'absolute',
+    fontSize: 8,
+    fontWeight: 'bold',
+    color: '#FFF',
+    textAlign: 'center',
+  },
+  boardPiece: {
+    position: 'absolute',
+    width: cellSize * 0.6,
+    height: cellSize * 0.6,
+    borderRadius: cellSize * 0.3,
+    borderWidth: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 5,
+  },
+  boardPieceNumber: {
+    fontSize: 8,
+    fontWeight: 'bold',
+    color: '#FFF',
   },
   diceSection: {
     backgroundColor: 'rgba(255, 255, 255, 0.1)',

@@ -17,50 +17,101 @@ const AmountSelectionScreen = ({navigation, route}) => {
   const {balance} = useWallet();
   const [selectedAmount, setSelectedAmount] = useState(null);
 
-  const amountOptions = [
-    {
-      amount: 10,
-      title: '₹10',
-      subtitle: 'Beginner',
-      prizePool: 10 * playerCount * 0.9,
-      popular: false,
-    },
-    {
-      amount: 25,
-      title: '₹25',
-      subtitle: 'Casual',
-      prizePool: 25 * playerCount * 0.9,
-      popular: true,
-    },
-    {
-      amount: 50,
-      title: '₹50',
-      subtitle: 'Competitive',
-      prizePool: 50 * playerCount * 0.9,
-      popular: false,
-    },
-    {
-      amount: 100,
-      title: '₹100',
-      subtitle: 'Pro',
-      prizePool: 100 * playerCount * 0.9,
-      popular: false,
-    },
-    {
-      amount: 250,
-      title: '₹250',
-      subtitle: 'Expert',
-      prizePool: 250 * playerCount * 0.9,
-      popular: false,
-    },
-    {
-      amount: 500,
-      title: '₹500',
-      subtitle: 'Master',
-      prizePool: 500 * playerCount * 0.9,
-      popular: false,
-    },
-  ];
+  const getAmountOptions = () => {
+    if (game.id === 'memory') {
+      return [
+        {
+          amount: 5,
+          title: '₹5',
+          subtitle: 'Starter',
+          prizePool: 5 * playerCount * 0.9,
+          popular: false,
+        },
+        {
+          amount: 10,
+          title: '₹10',
+          subtitle: 'Casual',
+          prizePool: 10 * playerCount * 0.9,
+          popular: true,
+        },
+        {
+          amount: 25,
+          title: '₹25',
+          subtitle: 'Competitive',
+          prizePool: 25 * playerCount * 0.9,
+          popular: false,
+        },
+        {
+          amount: 50,
+          title: '₹50',
+          subtitle: 'Pro',
+          prizePool: 50 * playerCount * 0.9,
+          popular: false,
+        },
+        {
+          amount: 100,
+          title: '₹100',
+          subtitle: 'Expert',
+          prizePool: 100 * playerCount * 0.9,
+          popular: false,
+        },
+        {
+          amount: 250,
+          title: '₹250',
+          subtitle: 'Master',
+          prizePool: 250 * playerCount * 0.9,
+          popular: false,
+        },
+      ];
+    } else {
+      return [
+        {
+          amount: 10,
+          title: '₹10',
+          subtitle: 'Beginner',
+          prizePool: 10 * playerCount * 0.9,
+          popular: false,
+        },
+        {
+          amount: 25,
+          title: '₹25',
+          subtitle: 'Casual',
+          prizePool: 25 * playerCount * 0.9,
+          popular: true,
+        },
+        {
+          amount: 50,
+          title: '₹50',
+          subtitle: 'Competitive',
+          prizePool: 50 * playerCount * 0.9,
+          popular: false,
+        },
+        {
+          amount: 100,
+          title: '₹100',
+          subtitle: 'Pro',
+          prizePool: 100 * playerCount * 0.9,
+          popular: false,
+        },
+        {
+          amount: 250,
+          title: '₹250',
+          subtitle: 'Expert',
+          prizePool: 250 * playerCount * 0.9,
+          popular: false,
+        },
+        {
+          amount: 500,
+          title: '₹500',
+          subtitle: 'Master',
+          prizePool: 500 * playerCount * 0.9,
+          popular: false,
+        },
+      ];
+    }
+  };
+
+  const amountOptions = getAmountOptions();
 
   const handleAmountSelection = (amount) => {
     if (balance < amount) {

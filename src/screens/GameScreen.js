@@ -160,9 +160,15 @@ const GameScreen = ({route, navigation}) => {
       </View>
 
       {/* Turn Info */}
-      <View style={styles.turnContainer}>
-        <Text style={styles.turnText}>
-          {canRollDice ? "Your Turn!" : `${getCurrentPlayerName()}'s Turn`}
+      <View style={[
+        styles.turnContainer,
+        canRollDice && styles.myTurnContainer
+      ]}>
+        <Text style={[
+          styles.turnText,
+          canRollDice && styles.myTurnText
+        ]}>
+          {canRollDice ? "🎯 YOUR TURN!" : `${getCurrentPlayerName()}'s Turn`}
         </Text>
         {diceValue && (
           <Text style={styles.diceText}>🎲 {diceValue}</Text>
@@ -291,11 +297,29 @@ const styles = StyleSheet.create({
     padding: 15,
     alignItems: 'center',
     marginBottom: 20,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  myTurnContainer: {
+    backgroundColor: '#1b5e20',
+    borderColor: '#4caf50',
+    shadowColor: '#4caf50',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    elevation: 10,
   },
   turnText: {
     fontSize: 16,
     fontWeight: 'bold',
     color: '#fff',
+  },
+  myTurnText: {
+    color: '#4caf50',
+    fontSize: 18,
+    textShadowColor: '#4caf50',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 10,
   },
   diceText: {
     fontSize: 24,

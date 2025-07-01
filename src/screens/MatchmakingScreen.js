@@ -93,6 +93,7 @@ const MatchmakingScreen = ({navigation, route}) => {
   const startMatchmaking = () => {
     const gameType = game.id === 'memory' ? 'MEMORY' : 
                     game.id === 'fast_ludo' ? 'FAST_LUDO' : 
+                    game.id === 'snakes_ladders' ? 'SNAKES_LADDERS' :
                     game.id === 'classic_ludo' ? 'CLASSIC_LUDO' : 'CLASSIC_LUDO';
     
     console.log('Starting matchmaking for:', gameType, playerCount, entryFee);
@@ -140,6 +141,14 @@ const MatchmakingScreen = ({navigation, route}) => {
       });
     } else if (game.id === 'fast_ludo') {
       navigation.navigate('FastLudoGame', {
+        gameId: gameId,
+        playerId: playerIdToUse,
+        playerName: playerNameToUse,
+        socket: socket,
+        players: players, // Pass matched players data
+      });
+    } else if (game.id === 'snakes_ladders') {
+      navigation.navigate('SnakesLaddersGame', {
         gameId: gameId,
         playerId: playerIdToUse,
         playerName: playerNameToUse,
