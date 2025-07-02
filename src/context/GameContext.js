@@ -79,6 +79,17 @@ const gameReducer = (state, action) => {
         connectionStatus: state.connectionStatus,
         matchmakingStatus: 'idle' // Reset matchmaking status
       };
+    case 'FORCE_RESET_TO_IDLE':
+      return {
+        ...state,
+        matchmakingStatus: 'idle',
+        gameId: null,
+        playerId: null,
+        players: {},
+        winner: null,
+        gameStatus: 'waiting',
+        error: null
+      };
     default:
       return state;
   }
@@ -211,6 +222,15 @@ export const GameProvider = ({children}) => {
 
   // Matchmaking functions
   const joinMatchmaking = (gameType, maxPlayers, entryFee) => {
+    console.log('🎯 joinMatchmaking called with:', { gameType, maxPlayers, entryFee });
+    console.log('🔍 Current state:', {
+      socketConnected: state.socket?.connected,
+      connectionStatus: state.connectionStatus,
+      matchmakingStatus: state.matchmakingStatus,
+      gameId: state.gameId,
+      playerId: state.playerId
+    });
+    
     if (state.socket && state.connectionStatus === 'connected') {
       console.log('🎯 Starting new matchmaking - clearing previous state');
       // Clear any previous game state before starting new matchmaking
@@ -221,11 +241,15 @@ export const GameProvider = ({children}) => {
       dispatch({type: 'SET_MATCHMAKING_STATUS', payload: 'searching'});
       dispatch({type: 'CLEAR_ERROR'});
       
+      console.log('📤 Emitting joinMatchmaking to server');
       state.socket.emit('joinMatchmaking', {
         gameType,
         maxPlayers,
         entryFee
       });
+    } else {
+      console.log('❌ Cannot join matchmaking - socket not connected or connection status not ready');
+      console.log('Socket:', state.socket?.connected, 'Connection status:', state.connectionStatus);
     }
   };
 
@@ -325,11 +349,23 @@ export const GameProvider = ({children}) => {
 
   const resetToIdle = () => {
     console.log('🔄 Resetting to idle state...');
-    dispatch({type: 'SET_MATCHMAKING_STATUS', payload: 'idle'});
-    dispatch({type: 'SET_GAME_ID', payload: null});
-    dispatch({type: 'SET_PLAYER_ID', payload: null});
-    dispatch({type: 'UPDATE_PLAYERS', payload: {}});
-    dispatch({type: 'CLEAR_ERROR'});
+    console.log('🔍 Current state before reset:', {
+      matchmakingStatus: state.matchmakingStatus,
+      gameId: state.gameId,
+      playerId: state.playerId,
+      connectionStatus: state.connectionStatus
+    });
+    
+    // Force leave matchmaking to ensure backend cleanup
+    if (state.socket && state.socket.connected) {
+      console.log('📤 Emitting leaveMatchmaking to server during reset');
+      state.socket.emit('leaveMatchmaking');
+    }
+    
+    // Use the new force reset action
+    dispatch({type: 'FORCE_RESET_TO_IDLE'});
+    
+    console.log('✅ Reset to idle completed');
   };
 
   return (

@@ -8,11 +8,13 @@ import {
   Dimensions,
 } from 'react-native';
 import LudoBoard from '../components/LudoBoard';
+import { useGame } from '../context/GameContext';
 
 const { width, height } = Dimensions.get('window');
 
 const FastLudoGameScreen = ({ route, navigation }) => {
   const { gameId, playerId, playerName, socket } = route.params;
+  const { cleanupAfterGameEnd } = useGame();
   
   const [gameState, setGameState] = useState(null);
   const [currentTurn, setCurrentTurn] = useState(0);
@@ -34,14 +36,27 @@ const FastLudoGameScreen = ({ route, navigation }) => {
     socket.on('FAST_LUDO_ERROR', handleError);
 
     return () => {
+      console.log('🧹 FastLudoGame component unmounting, cleaning up...');
+      
+      // Emit leave game event
+      if (socket && socket.connected) {
+        socket.emit('LEAVE_FAST_LUDO_GAME', {
+          gameId,
+          playerId,
+        });
+      }
+      
       socket.off('FAST_LUDO_GAME_STARTED');
       socket.off('FAST_LUDO_TURN_UPDATE');
       socket.off('FAST_LUDO_DICE_ROLLED');
       socket.off('FAST_LUDO_PIECE_MOVED');
       socket.off('FAST_LUDO_GAME_ENDED');
       socket.off('FAST_LUDO_ERROR');
+      
+      // Clean up game state but preserve matchmaking queue
+      cleanupAfterGameEnd();
     };
-  }, [socket]);
+  }, [socket, gameId, playerId, cleanupAfterGameEnd]);
 
   const handleGameStarted = (data) => {
     console.log('Fast Ludo game started:', data);
@@ -81,7 +96,14 @@ const FastLudoGameScreen = ({ route, navigation }) => {
         return `${pName}: ${data.finalScores[pid]} points`;
       }).join('\n')}`,
       [
-        { text: 'Back to Menu', onPress: () => navigation.navigate('Home') }
+        { 
+          text: 'Back to Menu', 
+          onPress: () => {
+            // Reset matchmaking state to idle for next game
+            cleanupAfterGameEnd();
+            navigation.navigate('Home');
+          }
+        }
       ]
     );
   };
@@ -230,6 +252,8 @@ const FastLudoGameScreen = ({ route, navigation }) => {
                         playerId,
                       });
                     }
+                    // Reset matchmaking state to idle when leaving mid-game
+                    cleanupAfterGameEnd();
                     try {
                       navigation.navigate('Home');
                     } catch (error) {

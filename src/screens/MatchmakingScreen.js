@@ -29,7 +29,8 @@ const MatchmakingScreen = ({navigation, route}) => {
     error,
     joinMatchmaking,
     leaveMatchmaking,
-    clearError
+    clearError,
+    resetToIdle
   } = useGame();
   
   const [playersFound, setPlayersFound] = useState(0);
@@ -40,11 +41,35 @@ const MatchmakingScreen = ({navigation, route}) => {
   const [modalAnimation] = useState(new Animated.Value(0));
   const [countdownPulse] = useState(new Animated.Value(1));
 
+  // Force reset to idle when component mounts to ensure clean state
   useEffect(() => {
+    console.log('🔄 MatchmakingScreen mounted - forcing reset to idle state');
+    console.log('🔍 Current state on mount:', { connectionStatus, matchmakingStatus, gameId, playerId });
+    
+    // Reset to idle immediately when component mounts
+    resetToIdle();
+  }, []); // Run only once on mount
+
+  useEffect(() => {
+    console.log('🔍 MatchmakingScreen useEffect - connectionStatus:', connectionStatus, 'matchmakingStatus:', matchmakingStatus);
+    
     // Start matchmaking when component mounts and socket is connected
-    if (connectionStatus === 'connected' && matchmakingStatus === 'idle') {
-      console.log('🎯 Starting matchmaking - connection ready and status idle');
-      startMatchmaking();
+    if (connectionStatus === 'connected') {
+      console.log('🎯 Starting matchmaking - connection ready');
+      
+      // Force start matchmaking regardless of current status
+      if (matchmakingStatus === 'idle') {
+        console.log('✅ Status is idle, starting immediately');
+        setTimeout(() => {
+          startMatchmaking();
+        }, 100);
+      } else {
+        console.log('⚠️ Status is not idle, forcing reset and then starting');
+        resetToIdle();
+        setTimeout(() => {
+          startMatchmaking();
+        }, 500); // Longer delay to ensure reset is complete
+      }
     }
     
     const timerCleanup = startWaitTimer();
@@ -62,7 +87,7 @@ const MatchmakingScreen = ({navigation, route}) => {
       }
       backHandler.remove();
     };
-  }, [connectionStatus, matchmakingStatus]); // Add matchmakingStatus to dependencies
+  }, [connectionStatus]); // Only depend on connectionStatus to avoid infinite loops
 
   // Handle matchmaking status changes
   useEffect(() => {
@@ -116,7 +141,11 @@ const MatchmakingScreen = ({navigation, route}) => {
                     game.id === 'snakes_ladders' ? 'SNAKES_LADDERS' :
                     game.id === 'classic_ludo' ? 'CLASSIC_LUDO' : 'CLASSIC_LUDO';
     
-    console.log('Starting matchmaking for:', gameType, playerCount, entryFee);
+    console.log('🎯 Starting matchmaking for:', gameType, playerCount, entryFee);
+    console.log('🔍 Current matchmaking status before start:', matchmakingStatus);
+    console.log('🔍 Current connection status:', connectionStatus);
+    console.log('🔍 Socket connected:', socket?.connected);
+    
     joinMatchmaking(gameType, playerCount, entryFee);
   };
 

@@ -16,9 +16,11 @@ import PlayersList from '../components/PlayersList';
 import GameControls from '../components/GameControls';
 import EmotePanel from '../components/EmotePanel';
 import GameMessages from '../components/GameMessages';
+import { useGame } from '../context/GameContext';
 
 export default function EnhancedSnakeGameScreen({ route, navigation }) {
   const { gameId, playerName } = route.params;
+  const { cleanupAfterGameEnd } = useGame();
   
   // Game state
   const [players, setPlayers] = useState([]);
@@ -86,6 +88,24 @@ export default function EnhancedSnakeGameScreen({ route, navigation }) {
       setPlayers(updatedPlayers);
       setGameStarted(false);
       setCurrentPlayer(null);
+      
+      // Show winner alert and reset matchmaking state
+      setTimeout(() => {
+        Alert.alert(
+          'Game Over!',
+          `🎉 ${gameWinner.username} wins!`,
+          [
+            { 
+              text: 'Back to Menu', 
+              onPress: () => {
+                // Reset matchmaking state to idle for next game
+                cleanupAfterGameEnd();
+                navigation.navigate('Home');
+              }
+            }
+          ]
+        );
+      }, 1000);
     };
 
     const handlePlayerLeft = ({ leftPlayer, players: updatedPlayers, currentPlayer: newCurrentPlayer }) => {
@@ -129,6 +149,13 @@ export default function EnhancedSnakeGameScreen({ route, navigation }) {
 
     // Cleanup on unmount
     return () => {
+      console.log('🧹 EnhancedSnakeGameScreen component unmounting, cleaning up...');
+      
+      // Emit leave game event
+      if (socket && socket.connected) {
+        socket.emit('snakes_leaveRoom', { gameId });
+      }
+      
       socket.off('snakes_error', handleError);
       socket.off('snakes_playerJoined', handlePlayerJoined);
       socket.off('snakes_roomJoined', handleRoomJoined);
@@ -139,8 +166,11 @@ export default function EnhancedSnakeGameScreen({ route, navigation }) {
       socket.off('snakes_playerLeft', handlePlayerLeft);
       socket.off('snakes_gameReset', handleGameReset);
       socket.off('snakes_emoteReceived', handleEmoteReceived);
+      
+      // Clean up game state but preserve matchmaking queue
+      cleanupAfterGameEnd();
     };
-  }, [gameId, playerName, navigation]);
+  }, [gameId, playerName, navigation, cleanupAfterGameEnd]);
 
   // Clear messages after timeout
   useEffect(() => {
@@ -193,12 +223,14 @@ export default function EnhancedSnakeGameScreen({ route, navigation }) {
           style: 'destructive',
           onPress: () => {
             socket.emit('snakes_leaveRoom', { gameId });
+            // Reset matchmaking state to idle when leaving mid-game
+            cleanupAfterGameEnd();
             navigation.goBack();
           }
         }
       ]
     );
-  }, [gameId, navigation]);
+  }, [gameId, navigation, cleanupAfterGameEnd]);
 
   const handleSendEmote = useCallback((emote) => {
     socket.emit('snakes_sendEmote', { gameId, emote });

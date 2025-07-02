@@ -43,6 +43,7 @@ const MemoryGameScreen = ({ route, navigation }) => {
   const [connectionStatus, setConnectionStatus] = useState('connected');
   const [lastActivity, setLastActivity] = useState(Date.now());
   const [isProcessingCard, setIsProcessingCard] = useState(false);
+  const [leaderboardTimer, setLeaderboardTimer] = useState(5);
   
   // Animation refs
   const cardAnimations = useRef({}).current;
@@ -351,6 +352,21 @@ const MemoryGameScreen = ({ route, navigation }) => {
         reason: data.reason || null
       });
       setShowLeaderboard(true);
+      
+      // Start 5-second countdown timer for auto-close
+      setLeaderboardTimer(5);
+      const timerInterval = setInterval(() => {
+        setLeaderboardTimer(prev => {
+          if (prev <= 1) {
+            clearInterval(timerInterval);
+            // Auto-close leaderboard and reset to idle
+            handleLeaderboardClose();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      
     } catch (error) {
       console.error('Error handling end game:', error);
       // Show a basic leaderboard even if there's an error
@@ -369,6 +385,20 @@ const MemoryGameScreen = ({ route, navigation }) => {
         reason: 'Error processing game results'
       });
       setShowLeaderboard(true);
+      
+      // Start 5-second countdown timer for auto-close even on error
+      setLeaderboardTimer(5);
+      const timerInterval = setInterval(() => {
+        setLeaderboardTimer(prev => {
+          if (prev <= 1) {
+            clearInterval(timerInterval);
+            // Auto-close leaderboard and reset to idle
+            handleLeaderboardClose();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
     }
   };
 
@@ -585,7 +615,7 @@ const MemoryGameScreen = ({ route, navigation }) => {
               });
             }
             
-            // Complete cleanup when leaving mid-game
+            // Complete cleanup when leaving mid-game - this resets matchmaking to idle
             cleanupAfterGameEnd();
             
             // Navigate back safely
@@ -599,6 +629,38 @@ const MemoryGameScreen = ({ route, navigation }) => {
         }
       ]
     );
+  };
+
+  const handleLeaderboardClose = () => {
+    console.log('🏆 Auto-closing leaderboard and resetting to idle state');
+    setShowLeaderboard(false);
+    
+    // Reset game state before going home
+    if (socket && socket.connected) {
+      socket.emit('LEAVE_MEMORY_GAME', {
+        roomId,
+        playerId,
+      });
+    }
+    
+    // Reset all local state
+    setGameBoard([]);
+    setPlayers([]);
+    setScores({});
+    setGameStatus('playing');
+    setCurrentTurn(null);
+    setIsMyTurn(false);
+    setSelectedCards([]);
+    setFlippedCards([]);
+    setMatchedCards([]);
+    setPrizePool(0);
+    setGameResults(null);
+    setLeaderboardTimer(5);
+    
+    // Complete cleanup after game end - this will reset matchmaking to idle
+    cleanupAfterGameEnd();
+    console.log('🏠 Navigating back to Home after game completion');
+    navigation.navigate('Home');
   };
 
   const renderCard = ({ item, index }) => {
@@ -831,37 +893,20 @@ const MemoryGameScreen = ({ route, navigation }) => {
               ))}
             </View>
 
-            <TouchableOpacity
-              style={styles.backToMenuButton}
-              onPress={() => {
-                setShowLeaderboard(false);
-                // Reset game state before going home
-                if (socket && socket.connected) {
-                  socket.emit('LEAVE_MEMORY_GAME', {
-                    roomId,
-                    playerId,
-                  });
-                }
-                // Reset all local state
-                setGameBoard([]);
-                setPlayers([]);
-                setScores({});
-                setGameStatus('playing');
-                setCurrentTurn(null);
-                setIsMyTurn(false);
-                setSelectedCards([]);
-                setFlippedCards([]);
-                setMatchedCards([]);
-                setPrizePool(0);
-                setGameResults(null);
-                // Complete cleanup after game end - this will reset matchmaking to idle
-                cleanupAfterGameEnd();
-                console.log('🏠 Navigating back to Home after game completion');
-                navigation.navigate('Home');
-              }}
-            >
-              <Text style={styles.backToMenuButtonText}>Back to Menu</Text>
-            </TouchableOpacity>
+            {/* Auto-close timer display */}
+            <View style={styles.timerContainer}>
+              <Text style={styles.timerText}>
+                Returning to menu in {leaderboardTimer} seconds...
+              </Text>
+              <View style={styles.timerBar}>
+                <View 
+                  style={[
+                    styles.timerProgress, 
+                    { width: `${(leaderboardTimer / 5) * 100}%` }
+                  ]} 
+                />
+              </View>
+            </View>
           </View>
         </View>
       )}
@@ -1128,16 +1173,28 @@ const styles = StyleSheet.create({
     color: '#4caf50',
     fontSize: 18,
   },
-  backToMenuButton: {
-    backgroundColor: '#4fc3f7',
-    borderRadius: 10,
-    padding: 15,
+  timerContainer: {
     alignItems: 'center',
+    padding: 20,
   },
-  backToMenuButtonText: {
-    fontSize: 18,
+  timerText: {
+    fontSize: 16,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#4fc3f7',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  timerBar: {
+    width: '100%',
+    height: 6,
+    backgroundColor: '#16213e',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  timerProgress: {
+    height: '100%',
+    backgroundColor: '#4fc3f7',
+    borderRadius: 3,
   },
   waitingText: {
     fontSize: 20,

@@ -9,11 +9,13 @@ import {
   Alert,
 } from 'react-native';
 import LudoBoard from '../components/LudoBoard';
+import { useGame } from '../context/GameContext';
 
 const {width, height} = Dimensions.get('window');
 
 const GameScreen = ({route, navigation}) => {
   const {gameId, playerId, playerName, socket} = route.params;
+  const { cleanupAfterGameEnd } = useGame();
   
   const [gameState, setGameState] = useState(null);
   const [currentTurn, setCurrentTurn] = useState(null);
@@ -35,6 +37,16 @@ const GameScreen = ({route, navigation}) => {
     socket.on('CLASSIC_LUDO_CURRENT_STATE', handleCurrentState);
 
     return () => {
+      console.log('🧹 GameScreen component unmounting, cleaning up...');
+      
+      // Emit leave game event
+      if (socket && socket.connected) {
+        socket.emit('LEAVE_CLASSIC_LUDO_GAME', {
+          gameId,
+          playerId,
+        });
+      }
+      
       socket.off('CLASSIC_LUDO_GAME_STARTED');
       socket.off('CLASSIC_LUDO_TURN_UPDATE');
       socket.off('CLASSIC_LUDO_DICE_ROLLED');
@@ -42,8 +54,11 @@ const GameScreen = ({route, navigation}) => {
       socket.off('CLASSIC_LUDO_GAME_ENDED');
       socket.off('CLASSIC_LUDO_ERROR');
       socket.off('CLASSIC_LUDO_CURRENT_STATE');
+      
+      // Clean up game state but preserve matchmaking queue
+      cleanupAfterGameEnd();
     };
-  }, [socket]);
+  }, [socket, gameId, playerId, cleanupAfterGameEnd]);
 
   const handleGameStarted = (data) => {
     console.log('Classic Ludo game started:', data);
@@ -78,7 +93,14 @@ const GameScreen = ({route, navigation}) => {
       'Game Over!',
       `Winner: ${winnerName}\nReason: ${data.reason}`,
       [
-        { text: 'Back to Menu', onPress: () => navigation.navigate('Home') }
+        { 
+          text: 'Back to Menu', 
+          onPress: () => {
+            // Reset matchmaking state to idle for next game
+            cleanupAfterGameEnd();
+            navigation.navigate('Home');
+          }
+        }
       ]
     );
   };
@@ -218,6 +240,8 @@ const GameScreen = ({route, navigation}) => {
                         playerId,
                       });
                     }
+                    // Reset matchmaking state to idle when leaving mid-game
+                    cleanupAfterGameEnd();
                     try {
                       navigation.navigate('Home');
                     } catch (error) {
