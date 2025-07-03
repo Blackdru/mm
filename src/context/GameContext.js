@@ -123,45 +123,57 @@ export const GameProvider = ({children}) => {
     // Connection events
     socket.on('connect', () => {
       console.log('✅ Connected to game server');
-      dispatch({type: 'SET_CONNECTION_STATUS', payload: 'connected'});
-      dispatch({type: 'CLEAR_ERROR'});
+      setTimeout(() => {
+        dispatch({type: 'SET_CONNECTION_STATUS', payload: 'connected'});
+        dispatch({type: 'CLEAR_ERROR'});
+      }, 0);
     });
 
     socket.on('connected', (data) => {
       console.log('✅ Server confirmed connection:', data);
-      dispatch({type: 'SET_PLAYER_ID', payload: data.userId});
-      if (data.userName) {
-        dispatch({type: 'SET_PLAYER_NAME', payload: data.userName});
-        console.log('👤 Player name set from server:', data.userName);
-      }
-      console.log('📋 Connection data received:', {
-        userId: data.userId,
-        userName: data.userName,
-        userPhone: data.userPhone
-      });
+      setTimeout(() => {
+        dispatch({type: 'SET_PLAYER_ID', payload: data.userId});
+        if (data.userName) {
+          dispatch({type: 'SET_PLAYER_NAME', payload: data.userName});
+          console.log('👤 Player name set from server:', data.userName);
+        }
+        console.log('📋 Connection data received:', {
+          userId: data.userId,
+          userName: data.userName,
+          userPhone: data.userPhone
+        });
+      }, 0);
     });
 
     socket.on('disconnect', (reason) => {
       console.log('❌ Disconnected from server:', reason);
-      dispatch({type: 'SET_CONNECTION_STATUS', payload: 'disconnected'});
+      setTimeout(() => {
+        dispatch({type: 'SET_CONNECTION_STATUS', payload: 'disconnected'});
+      }, 0);
     });
 
     socket.on('connect_error', (error) => {
       console.error('❌ Connection error:', error);
-      dispatch({type: 'SET_CONNECTION_STATUS', payload: 'disconnected'});
-      dispatch({type: 'SET_ERROR', payload: 'Failed to connect to game server'});
+      setTimeout(() => {
+        dispatch({type: 'SET_CONNECTION_STATUS', payload: 'disconnected'});
+        dispatch({type: 'SET_ERROR', payload: 'Failed to connect to game server'});
+      }, 0);
     });
 
     // Matchmaking events
     socket.on('matchmakingStatus', (data) => {
       console.log('🔍 Matchmaking status:', data);
-      dispatch({type: 'SET_MATCHMAKING_STATUS', payload: data.status});
+      setTimeout(() => {
+        dispatch({type: 'SET_MATCHMAKING_STATUS', payload: data.status});
+      }, 0);
     });
 
     socket.on('matchmakingError', (data) => {
       console.error('❌ Matchmaking error:', data);
-      dispatch({type: 'SET_MATCHMAKING_STATUS', payload: 'error'});
-      dispatch({type: 'SET_ERROR', payload: data.message});
+      setTimeout(() => {
+        dispatch({type: 'SET_MATCHMAKING_STATUS', payload: 'error'});
+        dispatch({type: 'SET_ERROR', payload: data.message});
+      }, 0);
     });
 
     socket.on('matchFound', (data) => {
@@ -170,47 +182,59 @@ export const GameProvider = ({children}) => {
       
       // Process match found regardless of current status to fix the issue
       console.log('✅ Processing match found event...');
-      dispatch({type: 'SET_MATCHMAKING_STATUS', payload: 'found'});
-      dispatch({type: 'SET_GAME_ID', payload: data.gameId});
-      dispatch({type: 'SET_PLAYER_ID', payload: data.yourPlayerId});
-      if (data.yourPlayerName) {
-        dispatch({type: 'SET_PLAYER_NAME', payload: data.yourPlayerName});
-        console.log('👤 Player name updated from matchFound:', data.yourPlayerName);
-      }
-      if (data.players) {
-        dispatch({type: 'UPDATE_PLAYERS', payload: data.players});
-        console.log('👥 Players data received:', data.players);
-      }
-      console.log('🎯 Match details:', {
-        gameId: data.gameId,
-        gameType: data.gameType,
-        yourPlayerId: data.yourPlayerId,
-        yourPlayerName: data.yourPlayerName,
-        playersCount: data.players?.length || 0
-      });
+      
+      // Use setTimeout to avoid setState during render
+      setTimeout(() => {
+        dispatch({type: 'SET_MATCHMAKING_STATUS', payload: 'found'});
+        dispatch({type: 'SET_GAME_ID', payload: data.gameId});
+        dispatch({type: 'SET_PLAYER_ID', payload: data.yourPlayerId});
+        if (data.yourPlayerName) {
+          dispatch({type: 'SET_PLAYER_NAME', payload: data.yourPlayerName});
+          console.log('👤 Player name updated from matchFound:', data.yourPlayerName);
+        }
+        if (data.players) {
+          dispatch({type: 'UPDATE_PLAYERS', payload: data.players});
+          console.log('👥 Players data received:', data.players);
+        }
+        console.log('🎯 Match details:', {
+          gameId: data.gameId,
+          gameType: data.gameType,
+          yourPlayerId: data.yourPlayerId,
+          yourPlayerName: data.yourPlayerName,
+          playersCount: data.players?.length || 0
+        });
+      }, 0);
     });
 
     // Game room events
     socket.on('gameRoomJoined', (data) => {
       console.log('🎮 Game room joined:', data);
-      dispatch({type: 'SET_GAME_ID', payload: data.gameId});
+      setTimeout(() => {
+        dispatch({type: 'SET_GAME_ID', payload: data.gameId});
+      }, 0);
     });
 
     // Game state events
     socket.on('gameStateUpdated', (gameState) => {
       console.log('🎲 Game state updated:', gameState);
-      dispatch({type: 'UPDATE_GAME_STATE', payload: gameState});
+      setTimeout(() => {
+        dispatch({type: 'UPDATE_GAME_STATE', payload: gameState});
+      }, 0);
     });
 
     // Error events
     socket.on('gameError', (data) => {
       console.error('❌ Game error:', data);
-      dispatch({type: 'SET_ERROR', payload: data.message});
+      setTimeout(() => {
+        dispatch({type: 'SET_ERROR', payload: data.message});
+      }, 0);
     });
 
     socket.on('serverError', (data) => {
       console.error('❌ Server error:', data);
-      dispatch({type: 'SET_ERROR', payload: data.message});
+      setTimeout(() => {
+        dispatch({type: 'SET_ERROR', payload: data.message});
+      }, 0);
     });
 
     return () => {

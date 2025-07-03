@@ -14,11 +14,10 @@ import { useGame } from '../context/GameContext';
 
 const { width, height } = Dimensions.get('window');
 
-// Card symbols/images for the memory game
+// Card symbols/images for the memory game - 15 unique symbols for 30 cards (15 pairs)
 const CARD_SYMBOLS = [
-  '🎮', '🎯', '🎲', '🃏', '🎪', '🎨', '🎭', '🎪',
-  '⚽', '🏀', '🏈', '⚾', '🎾', '🏓', '🏸', '🏐',
-  '🚗', '🚙', '🚌', '🚎', '🏎️', '🚓', '🚑', '🚒',
+  '🎮', '🎯', '🎲', '🃏', '🎨', '🎭', '🎪',
+  '⚽', '🏀', '🏓', '🏸', '🏎️', '🚒', '🎾', '🏈'
 ];
 
 const MemoryGameScreen = ({ route, navigation }) => {
@@ -37,6 +36,7 @@ const MemoryGameScreen = ({ route, navigation }) => {
   const [isMyTurn, setIsMyTurn] = useState(false);
   const [turnTimeRemaining, setTurnTimeRemaining] = useState(0);
   const [currentTurnPlayer, setCurrentTurnPlayer] = useState(null);
+  const [localTimerActive, setLocalTimerActive] = useState(false);
   const [prizePool, setPrizePool] = useState(0);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [gameResults, setGameResults] = useState(null);
@@ -45,9 +45,30 @@ const MemoryGameScreen = ({ route, navigation }) => {
   const [isProcessingCard, setIsProcessingCard] = useState(false);
   const [leaderboardTimer, setLeaderboardTimer] = useState(5);
   
+  // Lifelines state
+  const [lifelines, setLifelines] = useState({});
+  const [missedTurns, setMissedTurns] = useState({});
+  
+  // Grid layout - no more scattered positions needed
+  
+  // Notification state
+  const [notification, setNotification] = useState(null);
+  
+  // Auto-hide notification after 3 seconds
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => {
+        setNotification(null);
+      }, 3000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
+  
   // Animation refs
   const cardAnimations = useRef({}).current;
   const lastCardPressTime = useRef(0);
+  const localTimerRef = useRef(null);
 
   useEffect(() => {
     if (!socket) return;
@@ -84,6 +105,9 @@ const MemoryGameScreen = ({ route, navigation }) => {
     socket.on('MEMORY_TURN_TIMER_UPDATE', handleTurnTimerUpdate);
     socket.on('MEMORY_TIMER_UPDATE', handleTurnTimerUpdate);
     socket.on('MEMORY_TURN_SKIPPED', handleTurnSkipped);
+    socket.on('MEMORY_CARDS_TIMEOUT_FLIP_BACK', handleTimeoutFlipBack);
+    socket.on('MEMORY_LIFELINE_LOST', handleLifelineLost);
+    socket.on('MEMORY_PLAYER_ELIMINATED', handlePlayerEliminated);
 
     // Initialize animations for cards
     initializeCardAnimations();
@@ -116,16 +140,66 @@ const MemoryGameScreen = ({ route, navigation }) => {
       socket.off('MEMORY_TURN_TIMER_UPDATE');
       socket.off('MEMORY_TIMER_UPDATE');
       socket.off('MEMORY_TURN_SKIPPED');
+      socket.off('MEMORY_CARDS_TIMEOUT_FLIP_BACK');
+      socket.off('MEMORY_LIFELINE_LOST');
+      socket.off('MEMORY_PLAYER_ELIMINATED');
       
       // Only clean up game state, not matchmaking (preserve queue)
-      cleanupGameState();
+      setTimeout(() => cleanupGameState(), 0);
     };
   }, [socket]);
 
+  // Local timer effect to keep countdown running smoothly
+  useEffect(() => {
+    if (localTimerActive && turnTimeRemaining > 0) {
+      localTimerRef.current = setInterval(() => {
+        setTurnTimeRemaining(prev => {
+          if (prev <= 1) {
+            setLocalTimerActive(false);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } else {
+      if (localTimerRef.current) {
+        clearInterval(localTimerRef.current);
+        localTimerRef.current = null;
+      }
+    }
+
+    return () => {
+      if (localTimerRef.current) {
+        clearInterval(localTimerRef.current);
+        localTimerRef.current = null;
+      }
+    };
+  }, [localTimerActive, turnTimeRemaining]);
+
   const initializeCardAnimations = () => {
-    for (let i = 0; i < 24; i++) {
+    for (let i = 0; i < 30; i++) {
       cardAnimations[i] = new Animated.Value(0);
     }
+  };
+
+  // Simple grid layout for 30 cards (5 columns x 6 rows)
+  const getCardGridPosition = (index) => {
+    const cols = 5;
+    const rows = 6;
+    const containerWidth = width - 50;
+    const cardSpacing = 8;
+    const cardWidth = (containerWidth - (cardSpacing * (cols + 1))) / cols;
+    const cardHeight = cardWidth; // Square cards
+    
+    const row = Math.floor(index / cols);
+    const col = index % cols;
+    
+    return {
+      left: cardSpacing + col * (cardWidth + cardSpacing),
+      top: cardSpacing + row * (cardHeight + cardSpacing),
+      width: cardWidth,
+      height: cardHeight
+    };
   };
 
   const handleGameStarted = (data) => {
@@ -148,10 +222,36 @@ const MemoryGameScreen = ({ route, navigation }) => {
     }
     setScores(data.scores || initialScores);
     
+    // Set lifelines from server data or initialize
+    if (data.lifelines) {
+      setLifelines(data.lifelines);
+    } else {
+      const initialLifelines = {};
+      if (data.players) {
+        data.players.forEach(player => {
+          initialLifelines[player.id] = 3;
+        });
+      }
+      setLifelines(initialLifelines);
+    }
+    
+    // Initialize missed turns
+    const initialMissedTurns = {};
+    if (data.players) {
+      data.players.forEach(player => {
+        initialMissedTurns[player.id] = 0;
+      });
+    }
+    setMissedTurns(initialMissedTurns);
+    
     setMatchedCards([]);
     setFlippedCards([]);
     setSelectedCards([]);
-    setPrizePool(data.prizePool || 0);
+    
+    // Set prize pool with debugging
+    const newPrizePool = data.prizePool || 0;
+    setPrizePool(newPrizePool);
+    console.log('Setting prize pool on game start:', newPrizePool);
     
     // Set initial turn state
     if (data.players && data.players.length > 0) {
@@ -180,6 +280,10 @@ const MemoryGameScreen = ({ route, navigation }) => {
     setIsMyTurn(data.currentPlayer === playerId);
     setCurrentTurnPlayer(data.currentPlayerName || 'Unknown');
     
+    // Reset timer when turn changes
+    setTurnTimeRemaining(0);
+    setLocalTimerActive(false);
+    
     // Update players list if provided
     if (data.players) {
       setPlayers(data.players);
@@ -190,22 +294,96 @@ const MemoryGameScreen = ({ route, navigation }) => {
     console.log('Turn timer started:', data);
     setTurnTimeRemaining(data.timeLeft);
     setCurrentTurnPlayer(data.playerName);
+    setLocalTimerActive(true); // Start local countdown
   };
 
   const handleTurnTimerUpdate = (data) => {
     console.log('Turn timer update:', data);
-    setTurnTimeRemaining(data.timeLeft);
+    // Sync with backend timer but don't interrupt local countdown
+    const backendTime = data.timeLeft;
+    const currentTime = turnTimeRemaining;
+    
+    // Only update if there's a significant difference (more than 2 seconds)
+    // This prevents constant interruption of smooth local countdown
+    if (Math.abs(backendTime - currentTime) > 2) {
+      setTurnTimeRemaining(backendTime);
+    }
+    
+    // Ensure local timer is active if we have time remaining
+    if (backendTime > 0 && !localTimerActive) {
+      setLocalTimerActive(true);
+    } else if (backendTime <= 0) {
+      setLocalTimerActive(false);
+    }
   };
 
   const handleTurnSkipped = (data) => {
     console.log('Turn skipped:', data);
     setCurrentTurnPlayer(data.nextPlayerName);
-    // Removed alert as requested - no need for alert when user misses turn
+    
+    // Reset timer state when turn is skipped
+    setTurnTimeRemaining(0);
+    setLocalTimerActive(false);
+  };
+
+  const handleLifelineLost = (data) => {
+    console.log('Lifeline lost:', data);
+    const { playerId, remainingLifelines, playerName } = data;
+    
+    // Update lifelines
+    setLifelines(prev => ({
+      ...prev,
+      [playerId]: remainingLifelines
+    }));
+    
+    // Show notification
+    setNotification({
+      type: 'lifeline',
+      message: `${playerName} lost a lifeline! (${remainingLifelines} remaining)`,
+      timestamp: Date.now()
+    });
+  };
+
+  const handlePlayerEliminated = (data) => {
+    console.log('Player eliminated:', data);
+    const { playerId, playerName, reason } = data;
+    
+    // Update lifelines to 0
+    setLifelines(prev => ({
+      ...prev,
+      [playerId]: 0
+    }));
+    
+    // Show notification
+    setNotification({
+      type: 'elimination',
+      message: `${playerName} has been eliminated! (No lifelines remaining)`,
+      timestamp: Date.now()
+    });
+  };
+
+  const handleTimeoutFlipBack = (data) => {
+    console.log('Timeout flip back:', data);
+    const { positions } = data;
+    
+    // Animate cards flipping back
+    positions.forEach(pos => animateCardFlip(pos, true));
+    
+    // Update game board to hide cards
+    setGameBoard(prev => 
+      prev.map((card, index) => 
+        positions.includes(index) ? { ...card, isFlipped: false } : card
+      )
+    );
+
+    // Clear tracking
+    setFlippedCards([]);
+    setSelectedCards([]);
   };
 
   const handleOpenCard = (data) => {
     console.log('Card opened:', data);
-    const { position, symbol } = data;
+    const { position, symbol, selectedCount } = data;
     
     setLastActivity(Date.now());
     
@@ -221,6 +399,11 @@ const MemoryGameScreen = ({ route, navigation }) => {
     
     // Track flipped cards
     setFlippedCards(prev => [...prev, position]);
+    
+    // If this is the second card, pause the local timer as the turn is complete
+    if (selectedCount === 2) {
+      setLocalTimerActive(false);
+    }
     
     // Reset processing state
     setIsProcessingCard(false);
@@ -248,6 +431,10 @@ const MemoryGameScreen = ({ route, navigation }) => {
     // Clear flipped cards
     setFlippedCards([]);
     setSelectedCards([]);
+    
+    // Reset timer state - player gets another turn so timer will restart
+    setTurnTimeRemaining(0);
+    setLocalTimerActive(false);
   };
 
   const handleCloseCards = (data) => {
@@ -279,54 +466,77 @@ const MemoryGameScreen = ({ route, navigation }) => {
   const handleEndGame = (data) => {
     try {
       console.log('Game ended:', data);
+      console.log('Prize pool from data:', data.prizePool);
+      console.log('Leaderboard from data:', data.leaderboard);
       setGameStatus('ended');
       
-      // Safely extract prize pool with fallback
-      const safePrizePool = typeof data.prizePool === 'number' ? data.prizePool : (prizePool || 0);
-      console.log('Prize pool for leaderboard:', safePrizePool);
+      // Safely extract prize pool with fallback - prioritize current state
+      const safePrizePool = typeof data.prizePool === 'number' && data.prizePool > 0 
+        ? data.prizePool 
+        : (typeof prizePool === 'number' && prizePool > 0 ? prizePool : 0);
+      console.log('Safe prize pool for leaderboard:', safePrizePool);
+      console.log('Data prize pool:', data.prizePool, 'State prize pool:', prizePool);
       
       // Use leaderboard data from backend if available, otherwise create it
       let leaderboardData;
       if (data.leaderboard && Array.isArray(data.leaderboard) && data.leaderboard.length > 0) {
         console.log('Using backend leaderboard data:', data.leaderboard);
+        console.log('Final scores from backend:', data.finalScores);
+        
         leaderboardData = data.leaderboard.map((player, index) => {
           const isWinner = index === 0 || player.id === data.winnerId; // First place or explicit winner
-          const winAmount = isWinner ? (safePrizePool * 0.9) : 0;
+          const winAmount = isWinner ? safePrizePool : 0; // Winner gets the full prize pool (already calculated as 90% of entry fees)
           
-          console.log(`Player ${player.name}: isWinner=${isWinner}, winAmount=${winAmount}`);
+          // Use score from leaderboard data, fallback to finalScores, then current scores
+          const playerScore = typeof player.score === 'number' ? player.score 
+            : (data.finalScores && data.finalScores[player.id]) 
+            || scores[player.id] || 0;
+          
+          console.log(`Player ${player.name}: score=${playerScore}, isWinner=${isWinner}, winAmount=${winAmount}, prizePool=${safePrizePool}`);
           
           return {
             id: player.id || 'unknown',
             name: player.name || 'Unknown',
-            score: typeof player.score === 'number' ? player.score : 0,
+            score: playerScore,
             isWinner,
             winAmount: Math.round(winAmount * 100) / 100, // Round to 2 decimal places
-            displayName: player.name || 'Unknown Player'
+            displayName: player.name || 'Unknown Player',
+            lifelines: lifelines[player.id] || 0
           };
         });
       } else {
         console.log('Creating leaderboard from players and scores');
+        console.log('Available data - players:', data.players, 'finalScores:', data.finalScores, 'current scores:', scores);
+        
         // Fallback to creating leaderboard from players and scores
         const playersToUse = Array.isArray(data.players) ? data.players : (Array.isArray(players) ? players : []);
         leaderboardData = playersToUse.map(player => {
-          const playerScore = (data.finalScores && data.finalScores[player.id]) || scores[player.id] || 0;
+          // Try multiple sources for the score
+          const playerScore = (data.finalScores && typeof data.finalScores[player.id] === 'number') 
+            ? data.finalScores[player.id]
+            : (typeof scores[player.id] === 'number' ? scores[player.id] : 0);
+            
           const isWinner = player.id === data.winnerId;
-          const winAmount = isWinner ? (safePrizePool * 0.9) : 0;
+          const winAmount = isWinner ? safePrizePool : 0; // Winner gets the full prize pool (already calculated as 90% of entry fees)
+          
+          console.log(`Fallback Player ${player.name}: score=${playerScore}, isWinner=${isWinner}, winAmount=${winAmount}, prizePool=${safePrizePool}`);
           
           return {
             id: player.id || 'unknown',
             name: player.name || player.playerName || 'Unknown',
-            score: typeof playerScore === 'number' ? playerScore : 0,
+            score: playerScore,
             isWinner,
             winAmount: Math.round(winAmount * 100) / 100, // Round to 2 decimal places
-            displayName: player.name || player.playerName || `Player ${player.position + 1}` || 'Unknown Player'
+            displayName: player.name || player.playerName || `Player ${player.position + 1}` || 'Unknown Player',
+            lifelines: lifelines[player.id] || 0
           };
         }).sort((a, b) => b.score - a.score);
         
         // Ensure the highest scorer is marked as winner if no explicit winner
         if (leaderboardData.length > 0 && !data.winnerId) {
           leaderboardData[0].isWinner = true;
-          leaderboardData[0].winAmount = Math.round((safePrizePool * 0.9) * 100) / 100;
+          leaderboardData[0].winAmount = Math.round(safePrizePool);
+          console.log(`Auto-assigned winner: ${leaderboardData[0].name}, winAmount: ${leaderboardData[0].winAmount}`);
         }
       }
       
@@ -337,12 +547,13 @@ const MemoryGameScreen = ({ route, navigation }) => {
           name: 'Unknown Player',
           score: 0,
           isWinner: true,
-          winAmount: Math.round((safePrizePool * 0.9) * 100) / 100,
-          displayName: 'Unknown Player'
+          winAmount: Math.round(safePrizePool * 100) / 100,
+          displayName: 'Unknown Player',
+          lifelines: 0
         }];
       }
       
-      console.log('Final leaderboard data:', leaderboardData);
+      console.log('Final leaderboard data with win amounts:', leaderboardData);
       
       setGameResults({
         leaderboard: leaderboardData,
@@ -424,6 +635,10 @@ const MemoryGameScreen = ({ route, navigation }) => {
     // Clear tracking immediately
     setFlippedCards([]);
     setSelectedCards([]);
+    
+    // Reset timer state - turn is changing
+    setTurnTimeRemaining(0);
+    setLocalTimerActive(false);
   };
 
   const handleCardsNoMatch = (data) => {
@@ -443,6 +658,10 @@ const MemoryGameScreen = ({ route, navigation }) => {
     // Clear tracking immediately
     setFlippedCards([]);
     setSelectedCards([]);
+    
+    // Reset timer state - turn is changing
+    setTurnTimeRemaining(0);
+    setLocalTimerActive(false);
   };
 
   const handleTurnChanged = (data) => {
@@ -452,6 +671,10 @@ const MemoryGameScreen = ({ route, navigation }) => {
     setCurrentTurnPlayer(data.currentPlayerName);
     setFlippedCards([]);
     setSelectedCards([]);
+    
+    // Reset timer when turn changes
+    setTurnTimeRemaining(0);
+    setLocalTimerActive(false);
   };
 
   const handleError = (data) => {
@@ -472,7 +695,19 @@ const MemoryGameScreen = ({ route, navigation }) => {
     setGameBoard(data.gameBoard || []);
     setScores(data.scores || {});
     setCurrentTurn(data.currentPlayerId);
-    setPrizePool(data.prizePool || 0);
+    
+    // Update prize pool if provided
+    if (typeof data.prizePool === 'number' && data.prizePool >= 0) {
+      setPrizePool(data.prizePool);
+      console.log('Updated prize pool from current state:', data.prizePool);
+    }
+    
+    // Restore lifelines if provided
+    if (data.lifelines) {
+      setLifelines(data.lifelines);
+    }
+    
+    // Grid layout doesn't need position restoration
     
     // Restore selected cards and processing state
     setSelectedCards(data.selectedCards || []);
@@ -510,7 +745,7 @@ const MemoryGameScreen = ({ route, navigation }) => {
     if (animation) {
       Animated.timing(animation, {
         toValue: reverse ? 0 : 1,
-        duration: 250, // Faster animation for better responsiveness
+        duration: 300,
         useNativeDriver: true,
       }).start();
     }
@@ -607,6 +842,13 @@ const MemoryGameScreen = ({ route, navigation }) => {
           text: 'Leave', 
           style: 'destructive',
           onPress: () => {
+            // Clear local timer
+            setLocalTimerActive(false);
+            if (localTimerRef.current) {
+              clearInterval(localTimerRef.current);
+              localTimerRef.current = null;
+            }
+            
             // Emit leave game event
             if (socket && socket.connected) {
               socket.emit('LEAVE_MEMORY_GAME', {
@@ -616,7 +858,7 @@ const MemoryGameScreen = ({ route, navigation }) => {
             }
             
             // Complete cleanup when leaving mid-game - this resets matchmaking to idle
-            cleanupAfterGameEnd();
+            setTimeout(() => cleanupAfterGameEnd(), 0);
             
             // Navigate back safely
             try {
@@ -643,6 +885,13 @@ const MemoryGameScreen = ({ route, navigation }) => {
       });
     }
     
+    // Clear local timer
+    setLocalTimerActive(false);
+    if (localTimerRef.current) {
+      clearInterval(localTimerRef.current);
+      localTimerRef.current = null;
+    }
+    
     // Reset all local state
     setGameBoard([]);
     setPlayers([]);
@@ -656,18 +905,21 @@ const MemoryGameScreen = ({ route, navigation }) => {
     setPrizePool(0);
     setGameResults(null);
     setLeaderboardTimer(5);
+    setTurnTimeRemaining(0);
     
     // Complete cleanup after game end - this will reset matchmaking to idle
-    cleanupAfterGameEnd();
-    console.log('🏠 Navigating back to Home after game completion');
-    navigation.navigate('Home');
+    setTimeout(() => {
+      cleanupAfterGameEnd();
+      console.log('🏠 Navigating back to Home after game completion');
+      navigation.navigate('Home');
+    }, 0);
   };
 
-  const renderCard = ({ item, index }) => {
-    const card = item;
+  const renderCard = (card, index) => {
     const isFlipped = card.isFlipped || card.isMatched;
     const isSelected = selectedCards.includes(index);
     const isMatched = card.isMatched;
+    const gridPosition = getCardGridPosition(index);
     
     const animatedStyle = {
       transform: [
@@ -683,7 +935,14 @@ const MemoryGameScreen = ({ route, navigation }) => {
     // If card is matched, make it invisible
     if (isMatched) {
       return (
-        <View style={[styles.card, styles.invisibleCard]}>
+        <View 
+          key={index}
+          style={[
+            styles.gridCard, 
+            styles.invisibleCard,
+            gridPosition
+          ]}
+        >
           {/* Empty invisible card */}
         </View>
       );
@@ -691,9 +950,12 @@ const MemoryGameScreen = ({ route, navigation }) => {
 
     return (
       <TouchableOpacity
+        key={index}
         style={[
-          styles.card,
+          styles.gridCard,
+          gridPosition,
           isSelected && styles.selectedCard,
+          !isMyTurn && styles.disabledCard,
         ]}
         onPress={() => handleCardPress(index)}
         disabled={!isMyTurn || gameStatus !== 'playing'}
@@ -742,7 +1004,7 @@ const MemoryGameScreen = ({ route, navigation }) => {
     return (
       <View style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.title}>Mind Morga</Text>
+          <Text style={styles.title}>🧠 Mind Morga</Text>
           <Text style={styles.subtitle}>Memory Card Matching</Text>
           <Text style={styles.waitingText}>Loading game...</Text>
         </View>
@@ -754,7 +1016,7 @@ const MemoryGameScreen = ({ route, navigation }) => {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>Mind Morga</Text>
+        <Text style={styles.title}>🧠 Mind Morga</Text>
         
         {/* Connection Status */}
         {connectionStatus !== 'connected' && (
@@ -767,7 +1029,7 @@ const MemoryGameScreen = ({ route, navigation }) => {
         
         {/* Prize Pool Display */}
         <View style={styles.prizePoolContainer}>
-          <Text style={styles.prizePoolLabel}>Prize Pool</Text>
+          <Text style={styles.prizePoolLabel}>💰 Prize Pool</Text>
           <Text style={styles.prizePoolAmount}>₹{Number(prizePool || 0).toFixed(2)}</Text>
         </View>
         
@@ -775,16 +1037,42 @@ const MemoryGameScreen = ({ route, navigation }) => {
           {players && players.length > 0 ? (
             players.map((player, index) => {
               const playerScore = scores[player.id] || 0;
+              const playerLifelines = lifelines[player.id] || 3;
               const isMe = player.id === playerId;
               const displayName = isMe ? 'You' : (player.name || player.playerName || `Player ${index + 1}`);
               
               return (
-                <Text key={player.id} style={[
-                  styles.scoreText,
-                  isMe && styles.myScoreText
+                <View key={player.id} style={[
+                  styles.scoreCard,
+                  isMe && styles.myScoreCard,
+                  playerLifelines === 0 && styles.eliminatedCard
                 ]}>
-                  {displayName}: {playerScore}
-                </Text>
+                  <Text style={[
+                    styles.scorePlayerName,
+                    isMe && styles.myScorePlayerName
+                  ]}>
+                    {displayName}
+                  </Text>
+                  <Text style={[
+                    styles.scoreText,
+                    isMe && styles.myScoreText
+                  ]}>
+                    {playerScore} pts
+                  </Text>
+                  <View style={styles.lifelinesContainer}>
+                    {[1, 2, 3].map(heartIndex => (
+                      <Text 
+                        key={heartIndex}
+                        style={[
+                          styles.heartIcon,
+                          heartIndex <= playerLifelines ? styles.activeHeart : styles.inactiveHeart
+                        ]}
+                      >
+                        ❤️
+                      </Text>
+                    ))}
+                  </View>
+                </View>
               );
             })
           ) : (
@@ -793,41 +1081,40 @@ const MemoryGameScreen = ({ route, navigation }) => {
         </View>
       </View>
 
-      {/* Turn Indicator */}
-      <View style={[
-        styles.turnContainer,
-        isMyTurn && styles.myTurnContainer
-      ]}>
-        <Text style={[
-          styles.turnText,
-          isMyTurn && styles.myTurnText
+      {/* Turn Indicator - Fixed Height Container */}
+      <View style={styles.turnIndicatorContainer}>
+        <View style={[
+          styles.turnContainer,
+          isMyTurn && styles.myTurnContainer
         ]}>
-          {isMyTurn ? "🎯 YOUR TURN!" : `${getCurrentPlayerName()}'s Turn`}
-        </Text>
-        
-        {/* Turn Timer */}
-        {turnTimeRemaining > 0 && (
+          <Text style={[
+            styles.turnText,
+            isMyTurn && styles.myTurnText
+          ]}>
+            {isMyTurn ? "🎯 YOUR TURN!" : `${getCurrentPlayerName()}'s Turn`}
+          </Text>
+          
+          {/* Turn Timer - Always reserve space */}
           <View style={styles.turnTimerContainer}>
-            <Text style={[
-              styles.turnTimerText,
-              turnTimeRemaining <= 3 && styles.urgentTimer
-            ]}>
-              ⏱️ {turnTimeRemaining}s
-            </Text>
+            {turnTimeRemaining > 0 ? (
+              <Text style={[
+                styles.turnTimerText,
+                turnTimeRemaining <= 3 && styles.urgentTimer
+              ]}>
+                ⏱️ {turnTimeRemaining}s
+              </Text>
+            ) : (
+              <Text style={styles.turnTimerPlaceholder}>⏱️ --s</Text>
+            )}
           </View>
-        )}
+        </View>
       </View>
 
       {/* Game Board */}
       <View style={styles.gameBoard}>
-        <FlatList
-          data={gameBoard}
-          renderItem={renderCard}
-          keyExtractor={(item, index) => index.toString()}
-          numColumns={4}
-          contentContainerStyle={styles.boardContainer}
-          scrollEnabled={false}
-        />
+        <View style={styles.gridContainer}>
+          {gameBoard.map((card, index) => renderCard(card, index))}
+        </View>
       </View>
 
       {/* Game Controls */}
@@ -836,9 +1123,19 @@ const MemoryGameScreen = ({ route, navigation }) => {
           style={styles.controlButton}
           onPress={handleLeaveGame}
         >
-          <Text style={styles.controlButtonText}>Leave Game</Text>
+          <Text style={styles.controlButtonText}>🚪 Leave Game</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Notification */}
+      {notification && (
+        <View style={[
+          styles.notification,
+          notification.type === 'elimination' ? styles.eliminationNotification : styles.lifelineNotification
+        ]}>
+          <Text style={styles.notificationText}>{notification.message}</Text>
+        </View>
+      )}
 
       {/* Leaderboard Modal */}
       {showLeaderboard && gameResults && (
@@ -854,7 +1151,7 @@ const MemoryGameScreen = ({ route, navigation }) => {
             
             <View style={styles.prizePoolDisplay}>
               <Text style={styles.prizePoolDisplayText}>
-                Total Prize Pool: ₹{(gameResults.prizePool || 0).toFixed(2)}
+                💰 Total Prize Pool: ₹{Number(prizePool || 0).toFixed(2)}
               </Text>
             </View>
 
@@ -879,6 +1176,9 @@ const MemoryGameScreen = ({ route, navigation }) => {
                     <Text style={styles.playerScoreText}>
                       Score: {typeof player.score === 'number' ? player.score : 0}
                     </Text>
+                    <Text style={styles.playerLifelinesText}>
+                      ❤️ {player.lifelines || 0} lifelines remaining
+                    </Text>
                   </View>
                   
                   <View style={styles.winAmountContainer}>
@@ -886,7 +1186,7 @@ const MemoryGameScreen = ({ route, navigation }) => {
                       styles.winAmountText,
                       player.isWinner && styles.winnerAmountText
                     ]}>
-                      {typeof player.winAmount === 'number' && player.winAmount > 0 ? `+₹${player.winAmount.toFixed(2)}` : '₹0.00'}
+                      {player.winAmount > 0 ? `+₹${Number(prizePool || 0).toFixed(2)}` : '₹0.00'}
                     </Text>
                   </View>
                 </View>
@@ -917,161 +1217,297 @@ const MemoryGameScreen = ({ route, navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a2e',
-    padding: 20,
+    backgroundColor: '#0f0f23',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
   },
   header: {
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 8,
+    paddingTop: 10,
   },
   title: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 10,
+    color: '#00d4ff',
+    marginBottom: 5,
+    textShadowColor: 'rgba(0, 212, 255, 0.3)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 8,
   },
   subtitle: {
-    fontSize: 16,
-    color: '#ccc',
-    marginBottom: 20,
+    fontSize: 14,
+    color: '#a8b2d1',
+    marginBottom: 10,
   },
-    scoreContainer: {
+  scoreContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     width: '100%',
-    paddingHorizontal: 20,
+    paddingHorizontal: 5,
+    gap: 8,
+  },
+  scoreCard: {
+    flex: 1,
+    backgroundColor: '#1a1a2e',
+    borderRadius: 12,
+    padding: 10,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#3a3f5f',
+    shadowColor: '#00d4ff',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  myScoreCard: {
+    backgroundColor: '#1e3a5f',
+    borderColor: '#00d4ff',
+    borderWidth: 2,
+    shadowColor: '#00d4ff',
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 6,
+  },
+  eliminatedCard: {
+    backgroundColor: '#2a1a1a',
+    borderColor: '#ff6b6b',
+    borderWidth: 1,
+    opacity: 0.6,
+  },
+  scorePlayerName: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#ccd6f6',
+    marginBottom: 4,
+  },
+  myScorePlayerName: {
+    color: '#00d4ff',
   },
   scoreText: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
-    color: '#4fc3f7',
+    color: '#64ffda',
   },
   myScoreText: {
-    color: '#4caf50',
-    textShadowColor: '#4caf50',
+    color: '#00d4ff',
+    textShadowColor: 'rgba(0, 212, 255, 0.3)',
     textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 5,
+    textShadowRadius: 4,
+  },
+  lifelinesContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+    justifyContent: 'center',
+    gap: 2,
+  },
+  heartIcon: {
+    fontSize: 12,
+  },
+  activeHeart: {
+    color: '#ff6b6b',
+    opacity: 1,
+  },
+  inactiveHeart: {
+    color: '#666',
+    opacity: 0.3,
+  },
+  turnIndicatorContainer: {
+    height: 60,
+    justifyContent: 'center',
+    marginBottom: 8,
   },
   turnContainer: {
     alignItems: 'center',
-    marginBottom: 20,
-    padding: 15,
-    backgroundColor: '#16213e',
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: 'transparent',
+    padding: 12,
+    backgroundColor: '#1a1a2e',
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: '#3a3f5f',
+    shadowColor: '#00d4ff',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   myTurnContainer: {
-    backgroundColor: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    borderColor: '#00e676',
-    borderWidth: 3,
-    shadowColor: '#00e676',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 15,
-    elevation: 15,
-    transform: [{ scale: 1.02 }],
+    backgroundColor: '#1e3a5f',
+    borderColor: '#00d4ff',
+    borderWidth: 2,
+    shadowColor: '#00d4ff',
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 8,
   },
   turnText: {
     fontSize: 18,
-    color: '#fff',
+    color: '#ccd6f6',
     fontWeight: 'bold',
+    marginBottom: 8,
   },
   myTurnText: {
-    color: '#00e676',
-    fontSize: 22,
-    fontWeight: '900',
-    textShadowColor: '#00e676',
+    color: '#00d4ff',
+    fontSize: 18,
+    fontWeight: 'bold',
+    textShadowColor: 'rgba(0, 212, 255, 0.4)',
     textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 15,
-    letterSpacing: 1,
+    textShadowRadius: 6,
   },
   turnTimerContainer: {
-    marginTop: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    backgroundColor: '#2c3e50',
-    borderRadius: 8,
+    height: 28,
+    justifyContent: 'center',
+    paddingHorizontal: 15,
+    paddingVertical: 6,
+    backgroundColor: '#16213e',
+    borderRadius: 15,
+    minWidth: 80,
   },
   turnTimerText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
-    color: '#3498db',
+    color: '#64ffda',
+    textAlign: 'center',
+  },
+  turnTimerPlaceholder: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#8892b0',
     textAlign: 'center',
   },
   urgentTimer: {
-    color: '#e74c3c',
-    fontSize: 18,
+    color: '#ff6b6b',
+    fontSize: 16,
+    textShadowColor: '#ff6b6b',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 5,
   },
   gameBoard: {
     flex: 1,
     justifyContent: 'center',
+    alignItems: 'center',
+    marginVertical: 10,
+    paddingHorizontal: 10,
+  },
+  gridContainer: {
+    position: 'relative',
+    width: width - 50,
+    height: (() => {
+      const containerWidth = width - 50;
+      const cardSpacing = 8;
+      const cardWidth = (containerWidth - (cardSpacing * 6)) / 5; // 5 cols, 6 spacings
+      const cardHeight = cardWidth;
+      return cardSpacing * 7 + cardHeight * 6; // 6 rows, 7 spacings
+    })(),
+    alignSelf: 'center',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  gridCard: {
+    position: 'absolute',
+    borderRadius: 12,
+    backgroundColor: '#1a1a2e',
+    elevation: 8,
+    shadowColor: '#00d4ff',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    borderWidth: 2,
+    borderColor: '#3a3f5f',
   },
   boardContainer: {
     alignItems: 'center',
     justifyContent: 'center',
   },
   card: {
-    width: (width - 60) / 4 - 10,
-    height: (width - 60) / 4 - 10,
-    margin: 5,
-    borderRadius: 10,
-    backgroundColor: '#2c3e50', // Dark blue-gray background
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    width: (width - 80) / 4 - 8,
+    height: (width - 80) / 4 - 8,
+    margin: 4,
+    borderRadius: 15,
+    backgroundColor: '#1a1a2e',
+    elevation: 8,
+    shadowColor: '#00d4ff',
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
-    shadowRadius: 4,
+    shadowRadius: 8,
+    borderWidth: 2,
+    borderColor: '#16213e',
+  },
+  disabledCard: {
+    opacity: 0.5,
+    shadowOpacity: 0.1,
   },
   invisibleCard: {
     backgroundColor: 'transparent',
     elevation: 0,
     shadowOpacity: 0,
+    borderWidth: 0,
   },
   selectedCard: {
-    borderWidth: 3,
-    borderColor: '#FFD700', // Gold border for selected
+    borderWidth: 2,
+    borderColor: '#00d4ff',
+    transform: [{ scale: 1.1 }],
+    shadowColor: '#00d4ff',
+    shadowOpacity: 0.8,
+    shadowRadius: 12,
+    elevation: 15,
   },
   cardInner: {
     flex: 1,
-    borderRadius: 10,
+    borderRadius: 16,
   },
   cardFront: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 10,
-    backgroundColor: '#2c3e50', // Dark blue-gray background
+    borderRadius: 16,
+    backgroundColor: '#1a1a2e',
   },
   cardFlipped: {
-    backgroundColor: '#e8f5e9', // Light green background when flipped
+    backgroundColor: '#1e3a5f',
+    borderColor: '#00d4ff',
   },
   cardSymbol: {
-    fontSize: 32, // Larger icons for better visibility
-    color: '#fff',
+    fontSize: 40, // Increased for larger cards
+    color: '#a8b2d1',
     fontWeight: 'bold',
   },
   cardSymbolFlipped: {
-    color: '#333', // Dark color on white background
-    fontSize: 36, // Even larger when flipped
+    color: '#00d4ff',
+    fontSize: 44, // Increased for larger cards
+    fontWeight: 'bold',
+    textShadowColor: 'rgba(0, 212, 255, 0.3)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 4,
   },
   prizePoolContainer: {
-    backgroundColor: '#FFD700',
+    backgroundColor: '#1a1a2e',
     borderRadius: 15,
     paddingHorizontal: 15,
-    paddingVertical: 8,
+    paddingVertical: 10,
     marginBottom: 10,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#00d4ff',
+    shadowColor: '#00d4ff',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 4,
   },
   prizePoolLabel: {
     fontSize: 12,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#00d4ff',
   },
   prizePoolAmount: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#00d4ff',
+    textShadowColor: 'rgba(0, 212, 255, 0.3)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 4,
   },
   leaderboardOverlay: {
     position: 'absolute',
@@ -1079,7 +1515,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 1000,
@@ -1091,26 +1527,39 @@ const styles = StyleSheet.create({
     width: width * 0.9,
     maxHeight: height * 0.8,
     borderWidth: 2,
-    borderColor: '#FFD700',
+    borderColor: '#00d4ff',
+    shadowColor: '#00d4ff',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 10,
   },
   leaderboardTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#FFD700',
+    color: '#00d4ff',
     textAlign: 'center',
     marginBottom: 20,
+    textShadowColor: 'rgba(0, 212, 255, 0.3)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 6,
   },
   prizePoolDisplay: {
-    backgroundColor: '#16213e',
+    backgroundColor: '#1e3a5f',
     borderRadius: 10,
     padding: 15,
     marginBottom: 20,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#00d4ff',
   },
   prizePoolDisplayText: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#4fc3f7',
+    color: '#00d4ff',
+    textShadowColor: 'rgba(0, 212, 255, 0.3)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 4,
   },
   leaderboardList: {
     marginBottom: 20,
@@ -1126,9 +1575,14 @@ const styles = StyleSheet.create({
     borderColor: '#333',
   },
   winnerItem: {
-    backgroundColor: '#1b5e20',
-    borderColor: '#4caf50',
+    backgroundColor: '#1e3a5f',
+    borderColor: '#00d4ff',
     borderWidth: 2,
+    shadowColor: '#00d4ff',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 5,
   },
   rankContainer: {
     flexDirection: 'row',
@@ -1138,7 +1592,7 @@ const styles = StyleSheet.create({
   rankText: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#ccd6f6',
   },
   crownIcon: {
     fontSize: 20,
@@ -1151,14 +1605,22 @@ const styles = StyleSheet.create({
   playerNameText: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#ccd6f6',
   },
   winnerText: {
-    color: '#4caf50',
+    color: '#00d4ff',
+    textShadowColor: 'rgba(0, 212, 255, 0.3)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 4,
   },
   playerScoreText: {
     fontSize: 14,
-    color: '#ccc',
+    color: '#8892b0',
+    marginTop: 2,
+  },
+  playerLifelinesText: {
+    fontSize: 12,
+    color: '#00d4ff',
     marginTop: 2,
   },
   winAmountContainer: {
@@ -1167,11 +1629,14 @@ const styles = StyleSheet.create({
   winAmountText: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#ccc',
+    color: '#8892b0',
   },
   winnerAmountText: {
-    color: '#4caf50',
+    color: '#00d4ff',
     fontSize: 18,
+    textShadowColor: 'rgba(0, 212, 255, 0.3)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 4,
   },
   timerContainer: {
     alignItems: 'center',
@@ -1180,7 +1645,7 @@ const styles = StyleSheet.create({
   timerText: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#4fc3f7',
+    color: '#00d4ff',
     marginBottom: 10,
     textAlign: 'center',
   },
@@ -1193,17 +1658,17 @@ const styles = StyleSheet.create({
   },
   timerProgress: {
     height: '100%',
-    backgroundColor: '#4fc3f7',
+    backgroundColor: '#00d4ff',
     borderRadius: 3,
   },
   waitingText: {
     fontSize: 20,
-    color: '#fff',
+    color: '#ccd6f6',
     textAlign: 'center',
     marginBottom: 30,
   },
   startButton: {
-    backgroundColor: '#4fc3f7',
+    backgroundColor: '#00d4ff',
     paddingHorizontal: 30,
     paddingVertical: 15,
     borderRadius: 25,
@@ -1211,25 +1676,32 @@ const styles = StyleSheet.create({
   startButtonText: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#0f0f23',
   },
   controls: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: 20,
+    marginTop: 10,
+    paddingBottom: 5,
   },
   controlButton: {
-    backgroundColor: '#f44336',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
+    backgroundColor: '#ff6b6b',
+    paddingHorizontal: 25,
+    paddingVertical: 12,
+    borderRadius: 25,
+    shadowColor: '#ff6b6b',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
   },
   controlButtonText: {
     color: '#fff',
     fontWeight: 'bold',
+    fontSize: 16,
   },
   connectionStatus: {
-    backgroundColor: '#ff5722',
+    backgroundColor: '#ff6b6b',
     borderRadius: 10,
     paddingHorizontal: 10,
     paddingVertical: 5,
@@ -1251,6 +1723,32 @@ const styles = StyleSheet.create({
   gameReasonText: {
     color: '#fff',
     fontSize: 14,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  notification: {
+    position: 'absolute',
+    top: 80,
+    left: 15,
+    right: 15,
+    padding: 12,
+    borderRadius: 8,
+    zIndex: 999,
+    elevation: 10,
+  },
+  eliminationNotification: {
+    backgroundColor: '#ff6b6b',
+    borderColor: '#ff4757',
+    borderWidth: 1,
+  },
+  lifelineNotification: {
+    backgroundColor: '#ffa502',
+    borderColor: '#ff9500',
+    borderWidth: 1,
+  },
+  notificationText: {
+    color: '#fff',
+    fontSize: 13,
     fontWeight: 'bold',
     textAlign: 'center',
   },
