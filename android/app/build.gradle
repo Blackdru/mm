@@ -116,4 +116,8 @@ dependencies {
     } else {
         implementation jscFlavor
     }
+    
+    // Razorpay native checkout dependencies
+    implementation 'com.razorpay:checkout:1.6.33'
+    implementation 'com.google.android.gms:play-services-base:18.2.0'
 }

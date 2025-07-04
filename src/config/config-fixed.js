@@ -2,7 +2,7 @@
 import { Platform } from 'react-native';
 
 // HARDCODED IP - Change this if your IP changes
-const SERVER_IP = '192.168.126.58';
+const SERVER_IP = '172.23.141.58';
 const SERVER_PORT = '8080';
 
 // Simple URL selection based on platform

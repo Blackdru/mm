@@ -1,39 +1,42 @@
 import React from 'react';
-import { View, StyleSheet, Dimensions } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { theme } from '../styles/theme';
 
-const { width, height } = Dimensions.get('window');
-
+// Simple, non-animated background - No battery drain
 const GradientBackground = ({ 
   children, 
-  primaryColor = theme.colors.background,
+  variant = 'primary',
   style = {},
   ...props 
 }) => {
+  const getBackgroundColor = () => {
+    switch (variant) {
+      case 'light':
+        return theme.colors.backgroundLight;
+      case 'card':
+        return theme.colors.backgroundCard;
+      default:
+        return theme.colors.background;
+    }
+  };
+
   return (
-    <View
-      style={[styles.gradient, { backgroundColor: primaryColor }, style]}
+    <View 
+      style={[
+        styles.container, 
+        { backgroundColor: getBackgroundColor() }, 
+        style
+      ]} 
       {...props}
     >
-      <View style={styles.overlay} />
       {children}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  gradient: {
+  container: {
     flex: 1,
-    width: width,
-    minHeight: height,
-  },
-  overlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(255, 107, 53, 0.05)', // Subtle orange overlay
   },
 });
 

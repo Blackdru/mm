@@ -9,10 +9,7 @@ import HomeScreen from './src/screens/HomeScreen';
 import PlayerSelectionScreen from './src/screens/PlayerSelectionScreen';
 import AmountSelectionScreen from './src/screens/AmountSelectionScreen';
 import MatchmakingScreen from './src/screens/MatchmakingScreen';
-import GameScreen from './src/screens/GameScreen';
 import MemoryGameScreen from './src/screens/MemoryGame';
-import FastLudoGameScreen from './src/screens/FastLudoGame';
-import EnhancedSnakeGameScreen from './src/screens/EnhancedSnakeGameScreen';
 import WalletScreen from './src/screens/WalletScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import ReferralScreen from './src/screens/ReferralScreen';
@@ -76,14 +73,8 @@ const AppNavigator = () => {
         return <AmountSelectionScreen navigation={{navigate}} route={{params: screenParams}} />;
       case 'Matchmaking':
         return <MatchmakingScreen navigation={{navigate}} route={{params: screenParams}} />;
-      case 'Game':
-        return <GameScreen navigation={{navigate}} route={{params: screenParams}} />;
       case 'MemoryGame':
         return <MemoryGameScreen navigation={{navigate}} route={{params: screenParams}} />;
-      case 'FastLudoGame':
-        return <FastLudoGameScreen navigation={{navigate}} route={{params: screenParams}} />;
-      case 'SnakesLaddersGame':
-        return <EnhancedSnakeGameScreen navigation={{navigate}} route={{params: screenParams}} />;
       case 'Wallet':
         return <WalletScreen navigation={{navigate}} />;
       case 'Profile':

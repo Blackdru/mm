@@ -120,121 +120,119 @@ export const GameProvider = ({children}) => {
       dispatch({type: 'SET_PLAYER_NAME', payload: user.name});
     }
 
-    // Connection events
+    // Optimized connection events with better error handling
     socket.on('connect', () => {
       console.log('✅ Connected to game server');
-      setTimeout(() => {
-        dispatch({type: 'SET_CONNECTION_STATUS', payload: 'connected'});
-        dispatch({type: 'CLEAR_ERROR'});
-      }, 0);
+      dispatch({type: 'SET_CONNECTION_STATUS', payload: 'connected'});
+      dispatch({type: 'CLEAR_ERROR'});
     });
 
     socket.on('connected', (data) => {
       console.log('✅ Server confirmed connection:', data);
-      setTimeout(() => {
-        dispatch({type: 'SET_PLAYER_ID', payload: data.userId});
-        if (data.userName) {
-          dispatch({type: 'SET_PLAYER_NAME', payload: data.userName});
-          console.log('👤 Player name set from server:', data.userName);
-        }
-        console.log('📋 Connection data received:', {
-          userId: data.userId,
-          userName: data.userName,
-          userPhone: data.userPhone
-        });
-      }, 0);
+      dispatch({type: 'SET_PLAYER_ID', payload: data.userId});
+      if (data.userName) {
+        dispatch({type: 'SET_PLAYER_NAME', payload: data.userName});
+        console.log('👤 Player name set from server:', data.userName);
+      }
+      console.log('📋 Connection data received:', {
+        userId: data.userId,
+        userName: data.userName,
+        userPhone: data.userPhone
+      });
     });
 
     socket.on('disconnect', (reason) => {
       console.log('❌ Disconnected from server:', reason);
-      setTimeout(() => {
-        dispatch({type: 'SET_CONNECTION_STATUS', payload: 'disconnected'});
-      }, 0);
+      dispatch({type: 'SET_CONNECTION_STATUS', payload: 'disconnected'});
+      
+      // Auto-reconnect for certain disconnect reasons
+      if (reason === 'io server disconnect' || reason === 'transport close') {
+        console.log('🔄 Attempting to reconnect...');
+        setTimeout(() => {
+          if (socket && !socket.connected) {
+            socket.connect();
+          }
+        }, 2000);
+      }
     });
 
     socket.on('connect_error', (error) => {
       console.error('❌ Connection error:', error);
-      setTimeout(() => {
-        dispatch({type: 'SET_CONNECTION_STATUS', payload: 'disconnected'});
-        dispatch({type: 'SET_ERROR', payload: 'Failed to connect to game server'});
-      }, 0);
+      dispatch({type: 'SET_CONNECTION_STATUS', payload: 'disconnected'});
+      dispatch({type: 'SET_ERROR', payload: 'Failed to connect to game server'});
     });
 
-    // Matchmaking events
+    socket.on('reconnect', (attemptNumber) => {
+      console.log('🔄 Reconnected after', attemptNumber, 'attempts');
+      dispatch({type: 'SET_CONNECTION_STATUS', payload: 'connected'});
+      dispatch({type: 'CLEAR_ERROR'});
+    });
+
+    socket.on('reconnect_error', (error) => {
+      console.error('❌ Reconnection failed:', error);
+      dispatch({type: 'SET_CONNECTION_STATUS', payload: 'disconnected'});
+    });
+
+    // Optimized matchmaking events
     socket.on('matchmakingStatus', (data) => {
       console.log('🔍 Matchmaking status:', data);
-      setTimeout(() => {
-        dispatch({type: 'SET_MATCHMAKING_STATUS', payload: data.status});
-      }, 0);
+      dispatch({type: 'SET_MATCHMAKING_STATUS', payload: data.status});
     });
 
     socket.on('matchmakingError', (data) => {
       console.error('❌ Matchmaking error:', data);
-      setTimeout(() => {
-        dispatch({type: 'SET_MATCHMAKING_STATUS', payload: 'error'});
-        dispatch({type: 'SET_ERROR', payload: data.message});
-      }, 0);
+      dispatch({type: 'SET_MATCHMAKING_STATUS', payload: 'error'});
+      dispatch({type: 'SET_ERROR', payload: data.message});
     });
 
     socket.on('matchFound', (data) => {
       console.log('🎮 Match found event received:', data);
       console.log('🔍 Current matchmaking status:', state.matchmakingStatus);
       
-      // Process match found regardless of current status to fix the issue
+      // Process match found immediately for better responsiveness
       console.log('✅ Processing match found event...');
       
-      // Use setTimeout to avoid setState during render
-      setTimeout(() => {
-        dispatch({type: 'SET_MATCHMAKING_STATUS', payload: 'found'});
-        dispatch({type: 'SET_GAME_ID', payload: data.gameId});
-        dispatch({type: 'SET_PLAYER_ID', payload: data.yourPlayerId});
-        if (data.yourPlayerName) {
-          dispatch({type: 'SET_PLAYER_NAME', payload: data.yourPlayerName});
-          console.log('👤 Player name updated from matchFound:', data.yourPlayerName);
-        }
-        if (data.players) {
-          dispatch({type: 'UPDATE_PLAYERS', payload: data.players});
-          console.log('👥 Players data received:', data.players);
-        }
-        console.log('🎯 Match details:', {
-          gameId: data.gameId,
-          gameType: data.gameType,
-          yourPlayerId: data.yourPlayerId,
-          yourPlayerName: data.yourPlayerName,
-          playersCount: data.players?.length || 0
-        });
-      }, 0);
+      dispatch({type: 'SET_MATCHMAKING_STATUS', payload: 'found'});
+      dispatch({type: 'SET_GAME_ID', payload: data.gameId});
+      dispatch({type: 'SET_PLAYER_ID', payload: data.yourPlayerId});
+      if (data.yourPlayerName) {
+        dispatch({type: 'SET_PLAYER_NAME', payload: data.yourPlayerName});
+        console.log('👤 Player name updated from matchFound:', data.yourPlayerName);
+      }
+      if (data.players) {
+        dispatch({type: 'UPDATE_PLAYERS', payload: data.players});
+        console.log('👥 Players data received:', data.players);
+      }
+      console.log('🎯 Match details:', {
+        gameId: data.gameId,
+        gameType: data.gameType,
+        yourPlayerId: data.yourPlayerId,
+        yourPlayerName: data.yourPlayerName,
+        playersCount: data.players?.length || 0
+      });
     });
 
-    // Game room events
+    // Optimized game room events
     socket.on('gameRoomJoined', (data) => {
       console.log('🎮 Game room joined:', data);
-      setTimeout(() => {
-        dispatch({type: 'SET_GAME_ID', payload: data.gameId});
-      }, 0);
+      dispatch({type: 'SET_GAME_ID', payload: data.gameId});
     });
 
-    // Game state events
+    // Optimized game state events
     socket.on('gameStateUpdated', (gameState) => {
       console.log('🎲 Game state updated:', gameState);
-      setTimeout(() => {
-        dispatch({type: 'UPDATE_GAME_STATE', payload: gameState});
-      }, 0);
+      dispatch({type: 'UPDATE_GAME_STATE', payload: gameState});
     });
 
-    // Error events
+    // Optimized error events
     socket.on('gameError', (data) => {
       console.error('❌ Game error:', data);
-      setTimeout(() => {
-        dispatch({type: 'SET_ERROR', payload: data.message});
-      }, 0);
+      dispatch({type: 'SET_ERROR', payload: data.message});
     });
 
     socket.on('serverError', (data) => {
       console.error('❌ Server error:', data);
-      setTimeout(() => {
-        dispatch({type: 'SET_ERROR', payload: data.message});
-      }, 0);
+      dispatch({type: 'SET_ERROR', payload: data.message});
     });
 
     return () => {

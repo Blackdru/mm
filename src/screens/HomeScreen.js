@@ -7,11 +7,15 @@ import {
   ScrollView,
   RefreshControl,
   Alert,
+  Dimensions,
+  SafeAreaView,
 } from 'react-native';
 import {useAuth} from '../context/AuthContext';
 import {useWallet} from '../context/WalletContext';
 import { theme, commonStyles } from '../styles/theme';
 import GradientBackground from '../components/GradientBackground';
+
+const { width } = Dimensions.get('window');
 
 const HomeScreen = ({navigation}) => {
   const {user, logout} = useAuth();
@@ -41,136 +45,142 @@ const HomeScreen = ({navigation}) => {
 
   const games = [
     {
-      id: 'classic_ludo',
-      name: 'Classic Ludo',
-      description: 'Traditional board game for 2-4 players',
-      image: '🎲',
-      minPlayers: 2,
-      maxPlayers: 4,
-      available: true,
-    },
-    {
-      id: 'fast_ludo',
-      name: 'Fast Ludo',
-      description: 'Quick points-based Ludo with timer',
-      image: '⚡',
-      minPlayers: 2,
-      maxPlayers: 4,
-      available: true,
-    },
-    {
-      id: 'snakes_ladders',
-      name: 'Snakes & Ladders',
-      description: 'Classic board game with snakes and ladders',
-      image: '🐍',
-      minPlayers: 2,
-      maxPlayers: 4,
-      available: true,
-    },
-    {
       id: 'memory',
       name: 'Mind Morga',
-      description: 'Memory card matching for 2 players',
-      image: '🧠',
+      description: 'Memory card matching battles',
+      emoji: '🧠',
       minPlayers: 2,
       maxPlayers: 2,
       available: true,
+      prize: 'Starting from ₹5',
+      difficulty: 'Easy to Master',
     },
   ];
 
   return (
     <GradientBackground>
-      <ScrollView
-        style={commonStyles.scrollContainer}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl 
-            refreshing={refreshing} 
-            onRefresh={onRefresh}
-            tintColor={theme.colors.primary}
-            colors={[theme.colors.primary]}
-          />
-        }>
-        
-        {/* User Header */}
-        <View style={[commonStyles.card, styles.headerCard]}>
-          <View style={[commonStyles.row, commonStyles.spaceBetween]}>
-            <View style={[commonStyles.row, styles.userSection]}>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>
-                  {user?.name ? user.name.charAt(0).toUpperCase() : '🎮'}
-                </Text>
+      <SafeAreaView style={commonStyles.safeContainer}>
+        <ScrollView
+          style={styles.scrollContainer}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl 
+              refreshing={refreshing} 
+              onRefresh={onRefresh}
+              tintColor={theme.colors.primary}
+              colors={[theme.colors.primary]}
+            />
+          }>
+          
+          {/* Attractive Header */}
+          <View style={styles.header}>
+            <View style={styles.userSection}>
+              <View style={styles.userInfo}>
+                <View style={styles.avatar}>
+                  <Text style={styles.avatarText}>
+                    {user?.name ? user.name.charAt(0).toUpperCase() : '🎮'}
+                  </Text>
+                </View>
+                <View style={styles.userDetails}>
+                  <Text style={styles.welcomeText}>Welcome back,</Text>
+                  <Text style={styles.userName}>{user?.name || 'Gaming Champion'}</Text>
+                  <Text style={styles.userStatus}>🟢 Online • Ready to play</Text>
+                </View>
               </View>
-              <View style={styles.userDetails}>
-                <Text style={styles.welcomeText}>Welcome back!</Text>
-                <Text style={styles.userName}>
-                  {user?.name || 'Gamer'}
-                </Text>
-                <Text style={styles.userPhone}>{user?.phoneNumber}</Text>
+              <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+                <Text style={styles.logoutText}>Logout</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Attractive Wallet Card */}
+          <View style={[commonStyles.attractiveCard, styles.walletCard]}>
+            <View style={styles.walletHeader}>
+              <View style={styles.walletIconContainer}>
+                <Text style={styles.walletIcon}>💎</Text>
               </View>
+              <View style={styles.walletInfo}>
+                <Text style={styles.walletLabel}>Gaming Wallet</Text>
+                <Text style={styles.walletAmount}>₹{balance.toFixed(2)}</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.addMoneyButton}
+                onPress={() => navigation.navigate('Wallet')}>
+                <Text style={styles.addMoneyText}>Open Wallet</Text>
+              </TouchableOpacity>
             </View>
             
-            <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-              <Text style={styles.logoutText}>Logout</Text>
-            </TouchableOpacity>
+            <View style={styles.walletStats}>
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>0</Text>
+                <Text style={styles.statLabel}>Games Won</Text>
+              </View>
+              <View style={styles.statDivider} />
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>₹0</Text>
+                <Text style={styles.statLabel}>Total Winnings</Text>
+              </View>
+              <View style={styles.statDivider} />
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>0%</Text>
+                <Text style={styles.statLabel}>Win Rate</Text>
+              </View>
+            </View>
           </View>
-        </View>
 
-        {/* Wallet Section */}
-        <View style={[commonStyles.card, styles.walletCard]}>
-          <View style={styles.walletHeader}>
-            <Text style={styles.walletIcon}>💎</Text>
-            <Text style={styles.walletLabel}>Gaming Wallet</Text>
+          {/* Quick Actions Grid */}
+          <View style={styles.quickActionsSection}>
+            <Text style={styles.sectionTitle}>⚡ Quick Actions</Text>
+            <View style={styles.quickActions}>
+              <TouchableOpacity
+                style={[styles.actionButton, styles.primaryAction]}
+                onPress={() => navigation.navigate('Wallet')}>
+                <View style={styles.actionIconContainer}>
+                  <Text style={styles.actionIcon}>💳</Text>
+                </View>
+                <Text style={styles.actionText}>Wallet</Text>
+                <Text style={styles.actionSubtext}>Manage funds</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[styles.actionButton, styles.secondaryAction]}
+                onPress={() => navigation.navigate('Profile')}>
+                <View style={styles.actionIconContainer}>
+                  <Text style={styles.actionIcon}>👤</Text>
+                </View>
+                <Text style={styles.actionText}>Profile</Text>
+                <Text style={styles.actionSubtext}>Edit details</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[styles.actionButton, styles.accentAction]}
+                onPress={() => navigation.navigate('Referral')}>
+                <View style={styles.actionIconContainer}>
+                  <Text style={styles.actionIcon}>🎁</Text>
+                </View>
+                <Text style={styles.actionText}>Refer</Text>
+                <Text style={styles.actionSubtext}>Earn rewards</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity style={[styles.actionButton, styles.infoAction]}>
+                <View style={styles.actionIconContainer}>
+                  <Text style={styles.actionIcon}>📊</Text>
+                </View>
+                <Text style={styles.actionText}>Stats</Text>
+                <Text style={styles.actionSubtext}>View progress</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-          <Text style={styles.walletAmount}>₹{balance.toFixed(2)}</Text>
-          <TouchableOpacity
-            style={[commonStyles.button, styles.walletButton]}
-            onPress={() => navigation.navigate('Wallet')}>
-            <Text style={commonStyles.buttonText}>💰 Manage Wallet</Text>
-          </TouchableOpacity>
-        </View>
 
-        {/* Quick Actions */}
-        <View style={styles.quickActions}>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.addMoneyBtn]}
-            onPress={() => navigation.navigate('Wallet')}>
-            <Text style={styles.actionIcon}>💳</Text>
-            <Text style={styles.actionText}>Add Money</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity
-            style={[styles.actionButton, styles.profileBtn]}
-            onPress={() => navigation.navigate('Profile')}>
-            <Text style={styles.actionIcon}>👤</Text>
-            <Text style={styles.actionText}>Profile</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={[styles.actionButton, styles.referralBtn]}
-            onPress={() => navigation.navigate('Referral')}>
-            <Text style={styles.actionIcon}>🎁</Text>
-            <Text style={styles.actionText}>Refer & Earn</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={[styles.actionButton, styles.statsBtn]}>
-            <Text style={styles.actionIcon}>📊</Text>
-            <Text style={styles.actionText}>Stats</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Games Section */}
-        <View style={styles.section}>
-          <Text style={commonStyles.sectionTitle}>🎮 Choose Your Battle</Text>
-          
-          <View style={styles.gamesGrid}>
+          {/* Featured Games Section */}
+          <View style={styles.gamesSection}>
+            <Text style={styles.sectionTitle}>🎮 Featured Games</Text>
+            
             {games.map((game) => (
               <TouchableOpacity
                 key={game.id}
-                style={[
-                  styles.gameCard,
-                  !game.available && styles.gameCardDisabled,
-                ]}
+                style={[commonStyles.attractiveCard, styles.gameCard]}
                 onPress={() => {
                   if (game.available) {
                     navigation.navigate('PlayerSelection', {game});
@@ -179,49 +189,90 @@ const HomeScreen = ({navigation}) => {
                   }
                 }}
                 disabled={!game.available}>
-                <View style={styles.gameImageContainer}>
-                  <Text style={styles.gameImage}>{game.image}</Text>
+                
+                <View style={styles.gameHeader}>
+                  <View style={styles.gameIconContainer}>
+                    <Text style={styles.gameIcon}>{game.emoji}</Text>
+                  </View>
+                  <View style={styles.gameInfo}>
+                    <View style={styles.gameNameRow}>
+                      <Text style={styles.gameName}>{game.name}</Text>
+                      <View style={styles.prizeBadge}>
+                        <Text style={styles.prizeText}>{game.prize}</Text>
+                      </View>
+                    </View>
+                    <Text style={styles.gameDescription}>{game.description}</Text>
+                    <Text style={styles.gameDifficulty}>🎯 {game.difficulty}</Text>
+                  </View>
                 </View>
-                <Text style={styles.gameName}>{game.name}</Text>
-                <Text style={styles.gameDescription}>{game.description}</Text>
-                {game.available && (
-                  <View style={styles.playNowBadge}>
-                    <Text style={styles.playNowText}>Play Now!</Text>
+                
+                <View style={styles.gameFooter}>
+                  <View style={styles.gameDetails}>
+                    <Text style={styles.gameDetailText}>👥 {game.maxPlayers} Players</Text>
+                    <Text style={styles.gameDetailText}>⚡ Quick Match</Text>
+                    <Text style={styles.gameDetailText}>🏆 Winner Takes 80%</Text>
                   </View>
-                )}
-                {!game.available && (
-                  <View style={styles.comingSoonBadge}>
-                    <Text style={styles.comingSoonText}>Coming Soon</Text>
+                  
+                  <View style={styles.playButtonContainer}>
+                    <Text style={styles.playButtonText}>🚀 PLAY NOW</Text>
                   </View>
-                )}
+                </View>
               </TouchableOpacity>
             ))}
           </View>
-        </View>
 
-        {/* Quick Start */}
-        <View style={styles.section}>
-          <Text style={commonStyles.sectionTitle}>🚀 Quick Start</Text>
-          <View style={[commonStyles.card, styles.quickStartCard]}>
-            <Text style={styles.quickStartText}>Ready to play?</Text>
+          {/* Quick Play CTA */}
+          <View style={styles.ctaSection}>
             <TouchableOpacity 
-              style={[commonStyles.button, styles.startGameBtn]}
+              style={[commonStyles.largeButton, styles.quickPlayButton]}
               onPress={() => navigation.navigate('PlayerSelection', {game: games[0]})}>
-              <Text style={commonStyles.buttonText}>🎲 Play Classic Ludo</Text>
+              <Text style={[commonStyles.largeButtonText, styles.quickPlayText]}>
+                🎮 Start Playing Mind Morga
+              </Text>
             </TouchableOpacity>
+            
+            <Text style={styles.ctaSubtext}>
+              Join thousands of players competing for real money prizes!
+            </Text>
           </View>
-        </View>
-      </ScrollView>
+
+          {/* Gaming Tips */}
+          <View style={[commonStyles.card, styles.tipsCard]}>
+            <Text style={styles.tipsTitle}>💡 Pro Gaming Tips</Text>
+            <View style={styles.tipsList}>
+              <Text style={styles.tipItem}>🧠 Practice memory techniques to improve your game</Text>
+              <Text style={styles.tipItem}>⚡ Start with smaller amounts to build confidence</Text>
+              <Text style={styles.tipItem}>🎯 Focus and concentration are key to winning</Text>
+              <Text style={styles.tipItem}>💰 Manage your bankroll wisely for long-term success</Text>
+            </View>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
     </GradientBackground>
   );
 };
 
 const styles = StyleSheet.create({
-  headerCard: {
-    marginTop: theme.spacing.xs,
-    marginBottom: theme.spacing.sm,
+  scrollContainer: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingBottom: theme.spacing.xxxl,
+  },
+  
+  header: {
+    marginTop: theme.spacing.md,
+    marginBottom: theme.spacing.xl,
   },
   userSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  userInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
     flex: 1,
   },
   avatar: {
@@ -231,8 +282,10 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: theme.spacing.sm,
-    ...theme.shadows.small,
+    marginRight: theme.spacing.md,
+    borderWidth: 2,
+    borderColor: theme.colors.secondary,
+    ...theme.shadows.primaryShadow,
   },
   avatarText: {
     color: theme.colors.textPrimary,
@@ -244,190 +297,296 @@ const styles = StyleSheet.create({
   },
   welcomeText: {
     fontSize: theme.fonts.sizes.sm,
-    color: theme.colors.textLight,
+    color: theme.colors.textSecondary,
     fontWeight: '500',
   },
   userName: {
     fontSize: theme.fonts.sizes.lg,
     fontWeight: 'bold',
-    color: theme.colors.primary,
-    marginVertical: theme.spacing.xs,
+    color: theme.colors.textPrimary,
+    marginVertical: 2,
   },
-  userPhone: {
+  userStatus: {
     fontSize: theme.fonts.sizes.sm,
-    color: theme.colors.textSecondary,
+    color: theme.colors.textSuccess,
     fontWeight: '500',
   },
   logoutButton: {
     backgroundColor: theme.colors.danger,
-    borderRadius: theme.borderRadius.md,
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.borderRadius.lg,
     ...theme.shadows.small,
   },
   logoutText: {
-    fontSize: theme.fonts.sizes.sm,
     color: theme.colors.textPrimary,
-    fontWeight: 'bold',
+    fontSize: theme.fonts.sizes.sm,
+    fontWeight: '600',
   },
+  
   walletCard: {
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'rgba(255, 107, 53, 0.2)',
+    marginBottom: theme.spacing.xl,
   },
   walletHeader: {
-    alignItems: 'center',
-    marginBottom: theme.spacing.sm,
     flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: theme.spacing.lg,
+  },
+  walletIconContainer: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: theme.colors.accent,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: theme.spacing.md,
+    ...theme.shadows.small,
   },
   walletIcon: {
     fontSize: 24,
-    marginRight: theme.spacing.xs,
+  },
+  walletInfo: {
+    flex: 1,
   },
   walletLabel: {
     fontSize: theme.fonts.sizes.md,
-    color: theme.colors.textLight,
+    color: theme.colors.textSecondary,
     fontWeight: '500',
   },
   walletAmount: {
-    fontSize: theme.fonts.sizes.xxxl,
+    fontSize: theme.fonts.sizes.xxl,
     fontWeight: 'bold',
-    color: theme.colors.primary,
-    marginBottom: theme.spacing.sm,
+    color: theme.colors.textPrimary,
+    marginTop: 2,
   },
-  walletButton: {
+  addMoneyButton: {
     backgroundColor: theme.colors.success,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.borderRadius.lg,
+    ...theme.shadows.successShadow,
+  },
+  addMoneyText: {
+    color: theme.colors.textPrimary,
+    fontSize: theme.fonts.sizes.sm,
+    fontWeight: '600',
+  },
+  
+  walletStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    paddingTop: theme.spacing.lg,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+  },
+  statItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  statValue: {
+    fontSize: theme.fonts.sizes.lg,
+    fontWeight: 'bold',
+    color: theme.colors.textPrimary,
+  },
+  statLabel: {
+    fontSize: theme.fonts.sizes.xs,
+    color: theme.colors.textSecondary,
+    marginTop: theme.spacing.xs,
+    textAlign: 'center',
+  },
+  statDivider: {
+    width: 1,
+    height: 30,
+    backgroundColor: theme.colors.border,
+  },
+  
+  quickActionsSection: {
+    marginBottom: theme.spacing.xl,
+  },
+  sectionTitle: {
+    fontSize: theme.fonts.sizes.xl,
+    fontWeight: 'bold',
+    color: theme.colors.textPrimary,
+    marginBottom: theme.spacing.lg,
   },
   quickActions: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginHorizontal: theme.spacing.md,
-    marginBottom: theme.spacing.sm,
-    gap: theme.spacing.xs,
+    gap: theme.spacing.sm,
   },
   actionButton: {
     flex: 1,
+    borderRadius: theme.borderRadius.xl,
+    paddingVertical: theme.spacing.lg,
     alignItems: 'center',
-    backgroundColor: theme.colors.surfaceCard,
-    borderRadius: theme.borderRadius.md,
-    paddingVertical: theme.spacing.sm,
+    borderWidth: 1,
     ...theme.shadows.small,
-    minHeight: 60,
-    justifyContent: 'center',
   },
-  addMoneyBtn: {
-    backgroundColor: theme.colors.success,
+  primaryAction: {
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primaryLight,
   },
-  profileBtn: {
+  secondaryAction: {
     backgroundColor: theme.colors.secondary,
+    borderColor: theme.colors.secondaryLight,
   },
-  referralBtn: {
+  accentAction: {
     backgroundColor: theme.colors.accent,
+    borderColor: theme.colors.accentLight,
   },
-  statsBtn: {
-    backgroundColor: theme.colors.primaryLight,
+  infoAction: {
+    backgroundColor: theme.colors.info,
+    borderColor: theme.colors.info,
+  },
+  actionIconContainer: {
+    marginBottom: theme.spacing.sm,
   },
   actionIcon: {
     fontSize: 20,
-    marginBottom: theme.spacing.xs,
   },
   actionText: {
+    fontSize: theme.fonts.sizes.sm,
+    color: theme.colors.textPrimary,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  actionSubtext: {
     fontSize: theme.fonts.sizes.xs,
     color: theme.colors.textPrimary,
-    fontWeight: 'bold',
+    opacity: 0.8,
     textAlign: 'center',
   },
-  section: {
-    marginHorizontal: theme.spacing.md,
-    marginBottom: theme.spacing.sm,
-  },
-  gamesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: theme.spacing.xs,
+  
+  gamesSection: {
+    marginBottom: theme.spacing.xl,
   },
   gameCard: {
-    width: '48%',
-    backgroundColor: theme.colors.surfaceCard,
-    borderRadius: theme.borderRadius.md,
-    padding: theme.spacing.sm,
-    alignItems: 'center',
-    ...theme.shadows.small,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 107, 53, 0.1)',
-    position: 'relative',
-    minHeight: 120,
+    marginBottom: theme.spacing.md,
   },
-  gameCardDisabled: {
-    opacity: 0.6,
+  gameHeader: {
+    flexDirection: 'row',
+    marginBottom: theme.spacing.lg,
   },
-  gameImageContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  gameIconContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     backgroundColor: theme.colors.backgroundLight,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: theme.spacing.xs,
+    marginRight: theme.spacing.md,
+    borderWidth: 2,
+    borderColor: theme.colors.primary,
   },
-  gameImage: {
-    fontSize: 24,
+  gameIcon: {
+    fontSize: 28,
+  },
+  gameInfo: {
+    flex: 1,
+  },
+  gameNameRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: theme.spacing.sm,
   },
   gameName: {
-    fontSize: theme.fonts.sizes.sm,
+    fontSize: theme.fonts.sizes.xl,
     fontWeight: 'bold',
-    color: theme.colors.primary,
-    marginBottom: theme.spacing.xs,
-    textAlign: 'center',
+    color: theme.colors.textPrimary,
+  },
+  prizeBadge: {
+    backgroundColor: theme.colors.accent,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.borderRadius.lg,
+  },
+  prizeText: {
+    fontSize: theme.fonts.sizes.md,
+    color: theme.colors.textPrimary,
+    fontWeight: 'bold',
   },
   gameDescription: {
-    fontSize: theme.fonts.sizes.xs,
-    color: theme.colors.textLight,
-    textAlign: 'center',
-  },
-  playNowBadge: {
-    position: 'absolute',
-    bottom: 4,
-    left: 4,
-    backgroundColor: theme.colors.success,
-    paddingHorizontal: theme.spacing.xs,
-    paddingVertical: 2,
-    borderRadius: theme.borderRadius.sm,
-  },
-  playNowText: {
-    fontSize: 10,
-    color: theme.colors.textPrimary,
-    fontWeight: 'bold',
-  },
-  comingSoonBadge: {
-    position: 'absolute',
-    top: 4,
-    right: 4,
-    backgroundColor: theme.colors.warning,
-    paddingHorizontal: theme.spacing.xs,
-    paddingVertical: 2,
-    borderRadius: theme.borderRadius.sm,
-  },
-  comingSoonText: {
-    fontSize: 10,
-    color: theme.colors.textPrimary,
-    fontWeight: 'bold',
-  },
-  quickStartCard: {
-    alignItems: 'center',
-    paddingVertical: theme.spacing.md,
-  },
-  quickStartText: {
     fontSize: theme.fonts.sizes.md,
-    color: theme.colors.primary,
-    fontWeight: 'bold',
+    color: theme.colors.textSecondary,
     marginBottom: theme.spacing.sm,
-    textAlign: 'center',
+    lineHeight: 20,
   },
-  startGameBtn: {
-    marginTop: theme.spacing.xs,
-    minWidth: 200,
+  gameDifficulty: {
+    fontSize: theme.fonts.sizes.sm,
+    color: theme.colors.textSuccess,
+    fontWeight: '600',
+  },
+  
+  gameFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: theme.spacing.lg,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+  },
+  gameDetails: {
+    flex: 1,
+  },
+  gameDetailText: {
+    fontSize: theme.fonts.sizes.sm,
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.xs,
+    fontWeight: '500',
+  },
+  playButtonContainer: {
+    backgroundColor: theme.colors.secondary,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
+    borderRadius: theme.borderRadius.lg,
+    ...theme.shadows.successShadow,
+  },
+  playButtonText: {
+    fontSize: theme.fonts.sizes.md,
+    color: theme.colors.textPrimary,
+    fontWeight: 'bold',
+  },
+  
+  ctaSection: {
+    alignItems: 'center',
+    marginBottom: theme.spacing.xl,
+  },
+  quickPlayButton: {
+    width: '100%',
+    marginBottom: theme.spacing.md,
+  },
+  quickPlayText: {
+    fontSize: theme.fonts.sizes.lg,
+  },
+  ctaSubtext: {
+    fontSize: theme.fonts.sizes.md,
+    color: theme.colors.textSecondary,
+    textAlign: 'center',
+    fontWeight: '500',
+    lineHeight: 20,
+  },
+  
+  tipsCard: {
+    borderLeftWidth: 4,
+    borderLeftColor: theme.colors.accent,
+    marginBottom: theme.spacing.xl,
+  },
+  tipsTitle: {
+    fontSize: theme.fonts.sizes.lg,
+    fontWeight: 'bold',
+    color: theme.colors.textPrimary,
+    marginBottom: theme.spacing.lg,
+  },
+  tipsList: {
+    gap: theme.spacing.md,
+  },
+  tipItem: {
+    fontSize: theme.fonts.sizes.sm,
+    color: theme.colors.textSecondary,
+    lineHeight: 18,
+    fontWeight: '500',
   },
 });
 

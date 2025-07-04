@@ -10,6 +10,7 @@ import {
   Platform,
   ScrollView,
   ActivityIndicator,
+  SafeAreaView,
 } from 'react-native';
 import {useAuth} from '../context/AuthContext';
 import { theme, commonStyles } from '../styles/theme';
@@ -20,16 +21,13 @@ const AuthScreen = ({navigation}) => {
   const [otp, setOtp] = useState('');
   const [step, setStep] = useState('phone'); // 'phone' or 'otp'
   const [loading, setLoading] = useState(false);
-  const [otpSent, setOtpSent] = useState(false);
   const [timer, setTimer] = useState(0);
 
   const {sendOTP, verifyOTP} = useAuth();
 
   const formatPhoneNumber = (text) => {
-    // Remove all non-digits
     const cleaned = text.replace(/\D/g, '');
     
-    // Add +91 prefix if not present
     if (cleaned.length > 0 && !cleaned.startsWith('91')) {
       return '+91' + cleaned.slice(-10);
     } else if (cleaned.startsWith('91')) {
@@ -51,7 +49,6 @@ const AuthScreen = ({navigation}) => {
 
     if (result.success) {
       setStep('otp');
-      setOtpSent(true);
       startTimer();
       Alert.alert('Success', 'OTP sent successfully!');
     } else {
@@ -71,8 +68,7 @@ const AuthScreen = ({navigation}) => {
       setLoading(false);
 
       if (result.success) {
-        // Don't show alert, let the app navigate automatically
-        console.log('OTP verification successful, user will be redirected');
+        console.log('OTP verification successful');
       } else {
         Alert.alert('Error', result.message || 'Invalid OTP. Please try again.');
       }
@@ -104,271 +100,352 @@ const AuthScreen = ({navigation}) => {
 
   return (
     <GradientBackground>
-      <KeyboardAvoidingView
-        style={commonStyles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-        <ScrollView 
-          contentContainerStyle={styles.scrollContainer}
-          showsVerticalScrollIndicator={false}>
-          
-          {/* App Header */}
-          <View style={styles.header}>
-            <View style={styles.logoContainer}>
-              <Text style={styles.logoEmoji}>🎮</Text>
-              <Text style={styles.title}>BUDZEE</Text>
-              <Text style={styles.tagline}>Gaming Arena</Text>
-            </View>
-            <Text style={styles.subtitle}>
-              {step === 'phone'
-                ? 'Enter your mobile number to join the game!'
-                : 'Enter the OTP sent to your mobile'}
-            </Text>
-          </View>
-
-          {/* Form Card */}
-          <View style={[commonStyles.card, styles.formCard]}>
-            <View style={styles.formHeader}>
-              <Text style={styles.formTitle}>
-                {step === 'phone' ? '📱 Phone Verification' : '🔐 OTP Verification'}
-              </Text>
-            </View>
-
-            {step === 'phone' ? (
-              <>
-                <Text style={styles.label}>Mobile Number</Text>
-                <TextInput
-                  style={commonStyles.input}
-                  placeholder="Enter 10-digit mobile number"
-                  placeholderTextColor={theme.colors.textLight}
-                  value={phoneNumber}
-                  onChangeText={(text) => setPhoneNumber(formatPhoneNumber(text))}
-                  keyboardType="phone-pad"
-                  maxLength={13}
-                  editable={!loading}
-                />
-                
-                <TouchableOpacity
-                  style={[commonStyles.button, loading && styles.buttonDisabled]}
-                  onPress={handleSendOTP}
-                  disabled={loading}>
-                  {loading ? (
-                    <ActivityIndicator color={theme.colors.textPrimary} size="small" />
-                  ) : (
-                    <Text style={commonStyles.buttonText}>🚀 Send OTP</Text>
-                  )}
-                </TouchableOpacity>
-              </>
-            ) : (
-              <>
-                <Text style={styles.label}>Enter OTP</Text>
-                <Text style={styles.phoneDisplay}>📱 {phoneNumber}</Text>
-                
-                <TextInput
-                  style={[commonStyles.input, styles.otpInput]}
-                  placeholder="000000"
-                  placeholderTextColor={theme.colors.textLight}
-                  value={otp}
-                  onChangeText={setOtp}
-                  keyboardType="number-pad"
-                  maxLength={6}
-                  editable={!loading}
-                  textAlign="center"
-                />
-                
-                <TouchableOpacity
-                  style={[commonStyles.button, loading && styles.buttonDisabled]}
-                  onPress={handleVerifyOTP}
-                  disabled={loading}>
-                  {loading ? (
-                    <ActivityIndicator color={theme.colors.textPrimary} size="small" />
-                  ) : (
-                    <Text style={commonStyles.buttonText}>✅ Verify & Continue</Text>
-                  )}
-                </TouchableOpacity>
-
-                <View style={styles.resendContainer}>
-                  {timer > 0 ? (
-                    <Text style={styles.timerText}>
-                      ⏱️ Resend OTP in {timer} seconds
-                    </Text>
-                  ) : (
-                    <TouchableOpacity onPress={handleResendOTP} style={styles.resendButton}>
-                      <Text style={styles.resendText}>🔄 Resend OTP</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-
-                <TouchableOpacity
-                  style={styles.backButton}
-                  onPress={() => setStep('phone')}>
-                  <Text style={styles.backButtonText}>← Change Number</Text>
-                </TouchableOpacity>
-              </>
-            )}
-          </View>
-
-          {/* Features */}
-          <View style={styles.footer}>
-            <View style={styles.featuresContainer}>
-              <View style={styles.feature}>
-                <Text style={styles.featureIcon}>🏆</Text>
-                <Text style={styles.featureText}>Win Real Money</Text>
-              </View>
-              <View style={styles.feature}>
-                <Text style={styles.featureIcon}>⚡</Text>
-                <Text style={styles.featureText}>Instant Payouts</Text>
-              </View>
-              <View style={styles.feature}>
-                <Text style={styles.featureIcon}>🔒</Text>
-                <Text style={styles.featureText}>100% Secure</Text>
-              </View>
-            </View>
+      <SafeAreaView style={commonStyles.safeContainer}>
+        <KeyboardAvoidingView
+          style={styles.container}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <View style={styles.scrollContainer}>
             
-            <Text style={styles.footerText}>
-              By continuing, you agree to our Terms of Service and Privacy Policy
-            </Text>
+            {/* Attractive Header */}
+            <View style={styles.header}>
+              <View style={styles.logoContainer}>
+                <View style={styles.logoCircle}>
+                  <Text style={styles.logoEmoji}>🎮</Text>
+                </View>
+                <Text style={styles.appName}>BUDZEE</Text>
+                <Text style={styles.tagline}>Gaming Arena</Text>
+              </View>
+              
+              <View style={styles.welcomeContainer}>
+                <Text style={styles.welcomeTitle}>
+                  {step === 'phone' ? 'Welcome to Budzee!' : 'Verify Your Number'}
+                </Text>
+                <Text style={styles.welcomeSubtitle}>
+                  {step === 'phone'
+                    ? 'Enter your mobile number to start your gaming journey'
+                    : `We've sent a 6-digit OTP to ${phoneNumber}`}
+                </Text>
+              </View>
+            </View>
+
+            {/* Attractive Form Card */}
+            <View style={[commonStyles.attractiveCard, styles.formCard]}>
+              {step === 'phone' ? (
+                <>
+                  <View style={styles.inputSection}>
+                    <Text style={styles.inputLabel}>📱 Mobile Number</Text>
+                    <TextInput
+                      style={[commonStyles.input, styles.phoneInput]}
+                      placeholder="Enter 10-digit mobile number"
+                      placeholderTextColor={theme.colors.textTertiary}
+                      value={phoneNumber}
+                      onChangeText={(text) => setPhoneNumber(formatPhoneNumber(text))}
+                      keyboardType="phone-pad"
+                      maxLength={13}
+                      editable={!loading}
+                    />
+                    <Text style={styles.inputHint}>
+                      We'll send you a verification code
+                    </Text>
+                  </View>
+                  
+                  <TouchableOpacity
+                    style={[commonStyles.largeButton, loading && styles.buttonDisabled]}
+                    onPress={handleSendOTP}
+                    disabled={loading}>
+                    {loading ? (
+                      <View style={styles.loadingContainer}>
+                        <ActivityIndicator color={theme.colors.textPrimary} size="small" />
+                        <Text style={[commonStyles.largeButtonText, styles.loadingText]}>
+                          Sending OTP...
+                        </Text>
+                      </View>
+                    ) : (
+                      <Text style={commonStyles.largeButtonText}>🚀 Send OTP</Text>
+                    )}
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <>
+                  <View style={styles.inputSection}>
+                    <Text style={styles.inputLabel}>🔐 Enter OTP</Text>
+                    <View style={styles.phoneDisplayContainer}>
+                      <Text style={styles.phoneDisplayLabel}>Sent to:</Text>
+                      <Text style={styles.phoneDisplay}>{phoneNumber}</Text>
+                    </View>
+                    
+                    <TextInput
+                      style={[commonStyles.input, styles.otpInput]}
+                      placeholder="000000"
+                      placeholderTextColor={theme.colors.textTertiary}
+                      value={otp}
+                      onChangeText={setOtp}
+                      keyboardType="number-pad"
+                      maxLength={6}
+                      editable={!loading}
+                      textAlign="center"
+                    />
+                    
+                    <Text style={styles.inputHint}>
+                      Enter the 6-digit code we sent you
+                    </Text>
+                  </View>
+                  
+                  <TouchableOpacity
+                    style={[commonStyles.largeButton, loading && styles.buttonDisabled]}
+                    onPress={handleVerifyOTP}
+                    disabled={loading}>
+                    {loading ? (
+                      <View style={styles.loadingContainer}>
+                        <ActivityIndicator color={theme.colors.textPrimary} size="small" />
+                        <Text style={[commonStyles.largeButtonText, styles.loadingText]}>
+                          Verifying...
+                        </Text>
+                      </View>
+                    ) : (
+                      <Text style={commonStyles.largeButtonText}>✅ Verify & Continue</Text>
+                    )}
+                  </TouchableOpacity>
+
+                  {/* Resend Section */}
+                  <View style={styles.resendSection}>
+                    {timer > 0 ? (
+                      <Text style={styles.timerText}>
+                        Resend OTP in {timer} seconds
+                      </Text>
+                    ) : (
+                      <TouchableOpacity onPress={handleResendOTP} style={styles.resendButton}>
+                        <Text style={styles.resendText}>🔄 Resend OTP</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+
+                  {/* Change Number */}
+                  <TouchableOpacity
+                    style={styles.changeNumberButton}
+                    onPress={() => setStep('phone')}>
+                    <Text style={styles.changeNumberText}>📝 Change Number</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
+
+            {/* Compact Features Section */}
+            <View style={styles.featuresSection}>
+              <Text style={styles.featuresTitle}>🌟 Why Choose Budzee?</Text>
+              <View style={styles.featuresRow}>
+                <View style={styles.featureItemCompact}>
+                  <Text style={styles.featureIcon}>🏆</Text>
+                  <Text style={styles.featureTitle}>Win Real Money</Text>
+                </View>
+                
+                <View style={styles.featureItemCompact}>
+                  <Text style={styles.featureIcon}>⚡</Text>
+                  <Text style={styles.featureTitle}>Instant Payouts</Text>
+                </View>
+                
+                <View style={styles.featureItemCompact}>
+                  <Text style={styles.featureIcon}>🔒</Text>
+                  <Text style={styles.featureTitle}>100% Secure</Text>
+                </View>
+              </View>
+            </View>
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
     </GradientBackground>
   );
 };
 
 const styles = StyleSheet.create({
-  scrollContainer: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    padding: theme.spacing.md,
-    minHeight: theme.screen.height * 0.9,
+  container: {
+    flex: 1,
   },
+  scrollContainer: {
+    flex: 1,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    justifyContent: 'space-between',
+  },
+  
   header: {
     alignItems: 'center',
-    marginBottom: theme.spacing.lg,
+    marginBottom: theme.spacing.sm,
   },
   logoContainer: {
     alignItems: 'center',
-    marginBottom: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
+  },
+  logoCircle: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: theme.colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: theme.spacing.sm,
+    ...theme.shadows.primaryShadow,
   },
   logoEmoji: {
-    fontSize: 48,
-    marginBottom: theme.spacing.xs,
+    fontSize: 28,
   },
-  title: {
-    fontSize: theme.fonts.sizes.xxxl,
+  appName: {
+    fontSize: theme.fonts.sizes.xxl,
     fontWeight: 'bold',
-    color: theme.colors.primary,
+    color: theme.colors.textPrimary,
     marginBottom: theme.spacing.xs,
-    letterSpacing: 2,
-    textShadowColor: 'rgba(255, 107, 53, 0.3)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
+    letterSpacing: 1,
   },
   tagline: {
     fontSize: theme.fonts.sizes.md,
     color: theme.colors.accent,
     fontWeight: '600',
-    letterSpacing: 1,
   },
-  subtitle: {
-    fontSize: theme.fonts.sizes.md,
-    color: theme.colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 20,
-    marginTop: theme.spacing.sm,
-  },
-  formCard: {
-    borderWidth: 2,
-    borderColor: 'rgba(255, 107, 53, 0.2)',
-    marginBottom: theme.spacing.md,
-  },
-  formHeader: {
+  
+  welcomeContainer: {
     alignItems: 'center',
-    marginBottom: theme.spacing.md,
   },
-  formTitle: {
+  welcomeTitle: {
     fontSize: theme.fonts.sizes.lg,
     fontWeight: 'bold',
-    color: theme.colors.primary,
+    color: theme.colors.textPrimary,
+    marginBottom: theme.spacing.xs,
+    textAlign: 'center',
   },
-  label: {
+  welcomeSubtitle: {
+    fontSize: theme.fonts.sizes.sm,
+    color: theme.colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 18,
+    paddingHorizontal: theme.spacing.sm,
+  },
+  
+  formCard: {
+    marginBottom: theme.spacing.sm,
+  },
+  inputSection: {
+    marginBottom: theme.spacing.md,
+  },
+  inputLabel: {
     fontSize: theme.fonts.sizes.md,
     fontWeight: '600',
-    color: theme.colors.textDark,
-    marginBottom: theme.spacing.xs,
+    color: theme.colors.textPrimary,
+    marginBottom: theme.spacing.sm,
+  },
+  phoneInput: {
+    fontSize: theme.fonts.sizes.md,
+    fontWeight: '600',
+    textAlign: 'center',
   },
   otpInput: {
-    fontSize: 24,
-    letterSpacing: 6,
+    fontSize: theme.fonts.sizes.xl,
+    letterSpacing: 4,
     textAlign: 'center',
     fontWeight: 'bold',
-    color: theme.colors.primary,
+    color: theme.colors.textPrimary,
+  },
+  inputHint: {
+    fontSize: theme.fonts.sizes.sm,
+    color: theme.colors.textTertiary,
+    textAlign: 'center',
+    marginTop: theme.spacing.sm,
+    fontStyle: 'italic',
+  },
+  
+  phoneDisplayContainer: {
+    backgroundColor: theme.colors.backgroundLight,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  phoneDisplayLabel: {
+    fontSize: theme.fonts.sizes.sm,
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.xs,
   },
   phoneDisplay: {
     fontSize: theme.fonts.sizes.md,
-    color: theme.colors.textLight,
-    marginBottom: theme.spacing.sm,
-    textAlign: 'center',
-    fontWeight: '500',
+    color: theme.colors.textPrimary,
+    fontWeight: '600',
   },
+  
   buttonDisabled: {
     backgroundColor: theme.colors.textLight,
-    ...theme.shadows.small,
+    opacity: 0.6,
   },
-  resendContainer: {
+  loadingContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: theme.spacing.sm,
+  },
+  loadingText: {
+    marginLeft: theme.spacing.sm,
+  },
+  
+  resendSection: {
+    alignItems: 'center',
+    marginTop: theme.spacing.md,
+    paddingTop: theme.spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
   },
   resendButton: {
-    paddingVertical: theme.spacing.xs,
-    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
   },
   timerText: {
-    color: theme.colors.textLight,
+    color: theme.colors.textSecondary,
     fontSize: theme.fonts.sizes.sm,
+    fontWeight: '500',
   },
   resendText: {
     color: theme.colors.secondary,
     fontSize: theme.fonts.sizes.sm,
     fontWeight: '600',
   },
-  backButton: {
+  
+  changeNumberButton: {
     alignItems: 'center',
+    marginTop: theme.spacing.sm,
     paddingVertical: theme.spacing.xs,
   },
-  backButtonText: {
-    color: theme.colors.danger,
+  changeNumberText: {
+    color: theme.colors.textTertiary,
     fontSize: theme.fonts.sizes.sm,
-    fontWeight: '600',
-  },
-  footer: {
-    alignItems: 'center',
-  },
-  featuresContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    width: '100%',
-    marginBottom: theme.spacing.md,
-  },
-  feature: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  featureIcon: {
-    fontSize: 20,
-    marginBottom: theme.spacing.xs,
-  },
-  featureText: {
-    fontSize: theme.fonts.sizes.xs,
-    color: theme.colors.textSecondary,
-    textAlign: 'center',
     fontWeight: '500',
   },
-  footerText: {
-    fontSize: theme.fonts.sizes.xs,
-    color: theme.colors.textLight,
+  
+  featuresSection: {
+    marginTop: theme.spacing.sm,
+  },
+  featuresTitle: {
+    fontSize: theme.fonts.sizes.md,
+    fontWeight: 'bold',
+    color: theme.colors.textPrimary,
     textAlign: 'center',
-    lineHeight: 16,
-    opacity: 0.8,
+    marginBottom: theme.spacing.sm,
+  },
+  featuresRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: theme.spacing.xs,
+  },
+  featureItemCompact: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: theme.spacing.sm,
+  },
+  featureIcon: {
+    fontSize: 14,
+  },
+  featureTitle: {
+    fontSize: theme.fonts.sizes.xs,
+    fontWeight: '600',
+    color: theme.colors.textPrimary,
+    textAlign: 'center',
+    marginTop: theme.spacing.xs,
   },
 });
 

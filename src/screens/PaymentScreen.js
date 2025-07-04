@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import RazorpayCheckout from 'react-native-razorpay';
+import RazorpayNativeCheckout from '../utils/RazorpayNative';
 import config from '../config/config';
 
 const PaymentScreen = ({navigation, route}) => {
@@ -38,24 +39,47 @@ const PaymentScreen = ({navigation, route}) => {
         throw new Error('Failed to create order');
       }
 
-      // Razorpay integration
+      // Force native checkout by using minimal configuration
       const options = {
-        description: `Ludo Game - ${playerCount} Players`,
-        image: 'https://your-logo-url.com/logo.png',
+        description: `Memory Game - ${playerCount} Players`,
         currency: config.PAYMENT_CONFIG.CURRENCY,
         key: config.PAYMENT_CONFIG.RAZORPAY_KEY_ID,
         amount: amount * 100, // Amount in paise
-        name: 'Ludo Master',
+        name: 'Budzee Gaming',
         order_id: orderData.order.id,
         prefill: {
-          email: 'user@example.com',
+          email: 'player@budzee.com',
           contact: '9999999999',
-          name: 'Player Name'
+          name: 'Player'
         },
-        theme: {color: '#FF6B6B'}
+        theme: {
+          color: '#FF6B35'
+        },
+        // Disable webview and force native
+        send_sms_hash: true,
+        allow_rotation: false,
+        // Force native methods only
+        method: {
+          netbanking: true,
+          card: true,
+          upi: true,
+          wallet: true,
+          emi: false,
+          paylater: false
+        }
       };
 
-      const data = await RazorpayCheckout.open(options);
+      console.log('Opening Razorpay with native configuration:', options);
+      
+      // Try our custom native module first, fallback to regular if not available
+      let data;
+      try {
+        data = await RazorpayNativeCheckout.open(options);
+        console.log('Used native checkout module');
+      } catch (nativeError) {
+        console.log('Native module not available, using fallback:', nativeError);
+        data = await RazorpayCheckout.open(options);
+      }
       console.log('Payment Success:', data);
       
       // Verify payment with backend
@@ -132,62 +156,75 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    padding: 20,
+    padding: 24,
     justifyContent: 'center',
     alignItems: 'center',
   },
   title: {
-    fontSize: 32,
+    fontSize: 36,
     fontWeight: 'bold',
     color: '#FFD700',
-    marginBottom: 10,
+    marginBottom: 16,
+    textAlign: 'center',
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 18,
     color: '#FFF',
-    marginBottom: 40,
+    marginBottom: 48,
     textAlign: 'center',
+    lineHeight: 24,
   },
   gameInfo: {
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 10,
-    padding: 20,
-    marginBottom: 40,
+    borderRadius: 16,
+    padding: 24,
+    marginBottom: 48,
     width: '100%',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 107, 53, 0.3)',
   },
   infoText: {
-    fontSize: 18,
+    fontSize: 20,
     color: '#FFF',
-    marginBottom: 10,
+    marginBottom: 16,
+    fontWeight: '500',
   },
   payButton: {
     backgroundColor: '#4CAF50',
-    borderRadius: 10,
-    padding: 15,
+    borderRadius: 16,
+    paddingVertical: 18,
+    paddingHorizontal: 24,
     width: '100%',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 24,
+    shadowColor: '#4CAF50',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
   disabledButton: {
     backgroundColor: '#666',
   },
   payButtonText: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: 'bold',
     color: '#FFF',
   },
   mockButton: {
     backgroundColor: 'transparent',
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: '#666',
-    borderRadius: 10,
-    padding: 15,
+    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
     width: '100%',
     alignItems: 'center',
   },
   mockButtonText: {
-    fontSize: 16,
+    fontSize: 18,
     color: '#666',
+    fontWeight: '500',
   },
 });
 

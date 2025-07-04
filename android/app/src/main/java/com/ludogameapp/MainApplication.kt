@@ -16,6 +16,8 @@ class MainApplication : Application(), ReactApplication {
         object : DefaultReactNativeHost(this) {
             override fun getPackages(): List<ReactPackage> =
                 PackageList(this).packages.apply {
+                    // Add our custom Razorpay native module
+                    add(RazorpayNativePackage())
                     // Packages that cannot be autolinked yet can be added manually here, for example:
                     // add(MyReactNativePackage())
                     // Most packages are now autolinked, including react-native-razorpay

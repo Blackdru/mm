@@ -4,8 +4,8 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  ScrollView,
   Alert,
+  SafeAreaView,
 } from 'react-native';
 import { theme, commonStyles } from '../styles/theme';
 import GradientBackground from '../components/GradientBackground';
@@ -15,94 +15,21 @@ const PlayerSelectionScreen = ({navigation, route}) => {
   const {game} = route.params;
   const [selectedPlayers, setSelectedPlayers] = useState(null);
 
-  // Generate player options based on game type
-  const getPlayerOptions = () => {
-    if (game.id === 'memory') {
-      return [
-        {
-          count: 2,
-          title: '2 Players Only',
-          description: 'Memory card matching duel',
-          icon: '🧠',
-          available: true,
-          features: ['Turn-based gameplay', 'Memory challenge', 'Quick matches']
-        }
-      ];
-    } else if (game.id === 'fast_ludo') {
-      return [
-        {
-          count: 2,
-          title: '2 Players',
-          description: 'Fast-paced Ludo with 5-minute timer',
-          icon: '⚡',
-          available: true,
-          features: ['5-minute timer', 'Points-based scoring', 'All tokens start outside']
-        },
-        {
-          count: 4,
-          title: '4 Players',
-          description: 'Fast Ludo battle with 10-minute timer',
-          icon: '⚡⚡',
-          available: true,
-          features: ['10-minute timer', 'Points-based scoring', 'All tokens start outside']
-        }
-      ];
-    } else if (game.id === 'snakes_ladders') {
-      return [
-        {
-          count: 2,
-          title: '2 Players',
-          description: 'Classic Snakes & Ladders duel',
-          icon: '🐍',
-          available: true,
-          features: ['Turn-based dice rolling', 'Snakes and ladders', 'Race to 100']
-        },
-        {
-          count: 3,
-          title: '3 Players',
-          description: 'Triple challenge board game',
-          icon: '🐍🪜',
-          available: true,
-          features: ['More competitive', 'Strategic gameplay', 'Higher excitement']
-        },
-        {
-          count: 4,
-          title: '4 Players',
-          description: 'Full board battle royale',
-          icon: '🐍🪜🎲',
-          available: true,
-          features: ['Maximum competition', 'Bigger prize pools', 'Epic battles']
-        }
-      ];
-    } else {
-      // Classic Ludo
-      return [
-        {
-          count: 2,
-          title: '2 Players',
-          description: 'Quick match with one opponent',
-          icon: '👥',
-          available: true,
-          features: ['Faster gameplay', 'Quick matchmaking', 'Higher win chances']
-        },
-        {
-          count: 4,
-          title: '4 Players',
-          description: 'Full game with three opponents',
-          icon: '👥👥',
-          available: true,
-          features: ['Classic Ludo experience', 'More competitive', 'Bigger prize pools']
-        }
-      ];
+  const playerOptions = [
+    {
+      count: 2,
+      title: '2 Players Battle',
+      description: 'Head-to-head memory duel',
+      icon: '🧠',
+      available: true,
+      features: ['Turn-based gameplay', 'Quick 5-min matches', 'Winner takes 80%'],
+      difficulty: 'Perfect for beginners',
+      estimatedTime: '3-5 minutes'
     }
-  };
-
-  const playerOptions = getPlayerOptions();
+  ];
 
   const handlePlayerSelection = (playerCount) => {
     setSelectedPlayers(playerCount);
-    
-    // Route to amount selection for all games including memory
     navigation.navigate('AmountSelection', {
       game,
       playerCount,
@@ -115,23 +42,23 @@ const PlayerSelectionScreen = ({navigation, route}) => {
 
   return (
     <GradientBackground>
-      <CommonHeader
-        title={game.name}
-        subtitle="Select number of players"
-        icon={game.image}
-        onBackPress={handleBackPress}
-      />
-      
-      <ScrollView style={commonStyles.scrollContainer} showsVerticalScrollIndicator={false}>
-        {/* Player Options */}
-        <View style={styles.section}>
-          <Text style={commonStyles.sectionTitle}>Choose Game Mode</Text>
+      <SafeAreaView style={styles.container}>
+        <CommonHeader
+          title={game.name}
+          subtitle="Choose your battle mode"
+          icon={game.emoji}
+          onBackPress={handleBackPress}
+        />
+        
+        {/* Game Mode Selection */}
+        <View style={styles.modeSection}>
+          <Text style={styles.sectionTitle}>🎯 Select Battle Mode</Text>
           
           {playerOptions.map((option) => (
             <TouchableOpacity
               key={option.count}
               style={[
-                commonStyles.card,
+                commonStyles.attractiveCard,
                 styles.optionCard,
                 selectedPlayers === option.count && styles.optionCardSelected,
                 !option.available && styles.optionCardDisabled,
@@ -145,165 +72,241 @@ const PlayerSelectionScreen = ({navigation, route}) => {
               }}
               disabled={!option.available}>
               
-              <View style={commonStyles.row}>
-                <View style={styles.optionIcon}>
-                  <Text style={styles.optionIconText}>{option.icon}</Text>
+              <View style={styles.optionHeader}>
+                <View style={styles.optionIconContainer}>
+                  <Text style={styles.optionIcon}>{option.icon}</Text>
                 </View>
                 
-                <View style={styles.optionContent}>
+                <View style={styles.optionInfo}>
                   <Text style={styles.optionTitle}>{option.title}</Text>
                   <Text style={styles.optionDescription}>{option.description}</Text>
-                  
-                  <View style={styles.featureList}>
-                    {option.features.map((feature, index) => (
-                      <Text key={index} style={styles.featureItem}>• {feature}</Text>
-                    ))}
+                  <View style={styles.optionMeta}>
+                    <Text style={styles.optionDifficulty}>🎯 {option.difficulty}</Text>
+                    <Text style={styles.optionTime}>⏱️ {option.estimatedTime}</Text>
                   </View>
                 </View>
                 
-                <View style={styles.optionArrow}>
-                  <Text style={styles.optionArrowText}>→</Text>
+                <Text style={styles.selectArrow}>→</Text>
+              </View>
+              
+              <View style={styles.featuresSection}>
+                <Text style={styles.featuresTitle}>✨ Features:</Text>
+                <View style={styles.featuresList}>
+                  {option.features.map((feature, index) => (
+                    <Text key={index} style={styles.featureItem}>
+                      • {feature}
+                    </Text>
+                  ))}
                 </View>
               </View>
             </TouchableOpacity>
           ))}
         </View>
 
-        {/* Game Rules */}
-        <View style={styles.section}>
-          <Text style={commonStyles.sectionTitle}>Game Rules</Text>
-          <View style={commonStyles.card}>
-            {game.id === 'memory' ? (
-              <>
-                <Text style={styles.ruleItem}>• Match pairs of cards by flipping them</Text>
-                <Text style={styles.ruleItem}>• Take turns with your opponent</Text>
-                <Text style={styles.ruleItem}>• Remember card positions to win</Text>
-                <Text style={styles.ruleItem}>• Player with most matches wins</Text>
-                <Text style={styles.ruleItem}>• Free to play - no entry fee</Text>
-              </>
-            ) : game.id === 'fast_ludo' ? (
-              <>
-                <Text style={styles.ruleItem}>• All tokens start outside the home</Text>
-                <Text style={styles.ruleItem}>• No need to roll 6 to start</Text>
-                <Text style={styles.ruleItem}>• Points for moves, kills, and finishing</Text>
-                <Text style={styles.ruleItem}>• Timer: 5 mins (2P) / 10 mins (4P)</Text>
-                <Text style={styles.ruleItem}>• Highest score when timer ends wins</Text>
-              </>
-            ) : game.id === 'snakes_ladders' ? (
-              <>
-                <Text style={styles.ruleItem}>• Roll dice to move on the board</Text>
-                <Text style={styles.ruleItem}>• Climb ladders to advance quickly</Text>
-                <Text style={styles.ruleItem}>• Avoid snakes that send you back</Text>
-                <Text style={styles.ruleItem}>• First player to reach 100 wins</Text>
-                <Text style={styles.ruleItem}>• Winner takes 90% of the prize pool</Text>
-              </>
-            ) : (
-              <>
-                <Text style={styles.ruleItem}>• Roll dice to move your pieces</Text>
-                <Text style={styles.ruleItem}>• Get all 4 pieces to the center to win</Text>
-                <Text style={styles.ruleItem}>• Roll 6 to get an extra turn</Text>
-                <Text style={styles.ruleItem}>• Capture opponents to send them home</Text>
-                <Text style={styles.ruleItem}>• Winner takes 90% of the prize pool</Text>
-              </>
-            )}
+        {/* Game Rules - Compact */}
+        <View style={styles.rulesSection}>
+          <Text style={styles.sectionTitle}>📋 Quick Rules</Text>
+          <View style={styles.rulesGrid}>
+            <View style={styles.ruleCard}>
+              <Text style={styles.ruleIcon}>🎯</Text>
+              <Text style={styles.ruleText}>Match card pairs by memory</Text>
+            </View>
+            <View style={styles.ruleCard}>
+              <Text style={styles.ruleIcon}>⚡</Text>
+              <Text style={styles.ruleText}>Take turns with opponent</Text>
+            </View>
+            <View style={styles.ruleCard}>
+              <Text style={styles.ruleIcon}>🏆</Text>
+              <Text style={styles.ruleText}>Most matches wins 80%</Text>
+            </View>
+            <View style={styles.ruleCard}>
+              <Text style={styles.ruleIcon}>💰</Text>
+              <Text style={styles.ruleText}>Platform fee: 20%</Text>
+            </View>
           </View>
         </View>
 
         {/* Fair Play Notice */}
-        <View style={styles.section}>
-          <View style={[commonStyles.card, styles.fairPlayCard]}>
-            <Text style={styles.fairPlayTitle}>🛡️ Fair Play Guaranteed</Text>
+        <View style={styles.fairPlaySection}>
+          <View style={styles.fairPlayCard}>
+            <View style={styles.fairPlayHeader}>
+              <Text style={styles.fairPlayIcon}>🛡️</Text>
+              <Text style={styles.fairPlayTitle}>Fair Play Guaranteed</Text>
+            </View>
             <Text style={styles.fairPlayText}>
-              All games are monitored for fair play. Cheating or unfair practices 
-              will result in account suspension.
+              All games monitored by anti-cheat system. Play fair, win fair!
             </Text>
           </View>
         </View>
-      </ScrollView>
+      </SafeAreaView>
     </GradientBackground>
   );
 };
 
 const styles = StyleSheet.create({
-  section: {
-    marginBottom: theme.spacing.sm,
+  container: {
+    flex: 1,
   },
+  
+  modeSection: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.md,
+    flex: 1,
+  },
+  sectionTitle: {
+    fontSize: theme.fonts.sizes.lg,
+    fontWeight: 'bold',
+    color: theme.colors.textPrimary,
+    marginBottom: theme.spacing.lg,
+  },
+  
   optionCard: {
+    marginBottom: theme.spacing.lg,
+    borderColor: theme.colors.primary,
     borderWidth: 2,
-    borderColor: 'rgba(255, 107, 53, 0.1)',
   },
   optionCardSelected: {
-    borderColor: theme.colors.primary,
-    backgroundColor: theme.colors.surfaceCard,
-    ...theme.shadows.large,
+    borderColor: theme.colors.secondary,
+    backgroundColor: theme.colors.backgroundLight,
   },
   optionCardDisabled: {
     opacity: 0.6,
   },
-  optionIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: theme.colors.backgroundLight,
+  
+  optionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: theme.spacing.md,
+  },
+  optionIconContainer: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: theme.colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: theme.spacing.sm,
-    ...theme.shadows.small,
+    marginRight: theme.spacing.md,
+    ...theme.shadows.primaryShadow,
   },
-  optionIconText: {
-    fontSize: 20,
+  optionIcon: {
+    fontSize: 24,
   },
-  optionContent: {
+  optionInfo: {
     flex: 1,
   },
   optionTitle: {
-    fontSize: theme.fonts.sizes.md,
+    fontSize: theme.fonts.sizes.lg,
     fontWeight: 'bold',
-    color: theme.colors.primary,
+    color: theme.colors.textPrimary,
     marginBottom: theme.spacing.xs,
   },
   optionDescription: {
+    fontSize: theme.fonts.sizes.md,
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.sm,
+  },
+  optionMeta: {
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+  },
+  optionDifficulty: {
     fontSize: theme.fonts.sizes.sm,
-    color: theme.colors.textLight,
-    marginBottom: theme.spacing.xs,
+    color: theme.colors.textSuccess,
+    fontWeight: '600',
   },
-  featureList: {
-    marginTop: theme.spacing.xs,
-  },
-  featureItem: {
+  optionTime: {
     fontSize: theme.fonts.sizes.sm,
-    color: theme.colors.success,
-    marginBottom: 2,
-    fontWeight: '500',
+    color: theme.colors.textInfo,
+    fontWeight: '600',
   },
-  optionArrow: {
-    marginLeft: theme.spacing.sm,
-  },
-  optionArrowText: {
-    fontSize: 18,
+  selectArrow: {
+    fontSize: 24,
     color: theme.colors.primary,
     fontWeight: 'bold',
   },
-  ruleItem: {
+  
+  featuresSection: {
+    paddingTop: theme.spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+  },
+  featuresTitle: {
+    fontSize: theme.fonts.sizes.md,
+    fontWeight: '600',
+    color: theme.colors.textPrimary,
+    marginBottom: theme.spacing.sm,
+  },
+  featuresList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.spacing.sm,
+  },
+  featureItem: {
     fontSize: theme.fonts.sizes.sm,
-    color: theme.colors.textDark,
-    marginBottom: theme.spacing.xs,
-    lineHeight: 18,
+    color: theme.colors.textSuccess,
     fontWeight: '500',
   },
+  
+  rulesSection: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingBottom: theme.spacing.md,
+  },
+  rulesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: theme.spacing.sm,
+  },
+  ruleCard: {
+    width: '48%',
+    backgroundColor: theme.colors.surfaceCard,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.md,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  ruleIcon: {
+    fontSize: 20,
+    marginBottom: theme.spacing.sm,
+  },
+  ruleText: {
+    fontSize: theme.fonts.sizes.sm,
+    color: theme.colors.textSecondary,
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  
+  fairPlaySection: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingBottom: theme.spacing.lg,
+  },
   fairPlayCard: {
+    backgroundColor: theme.colors.surfaceCard,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.md,
     borderLeftWidth: 4,
     borderLeftColor: theme.colors.success,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  fairPlayHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: theme.spacing.sm,
+  },
+  fairPlayIcon: {
+    fontSize: 20,
+    marginRight: theme.spacing.sm,
   },
   fairPlayTitle: {
     fontSize: theme.fonts.sizes.md,
     fontWeight: 'bold',
-    color: theme.colors.success,
-    marginBottom: theme.spacing.xs,
+    color: theme.colors.textSuccess,
   },
   fairPlayText: {
     fontSize: theme.fonts.sizes.sm,
-    color: theme.colors.textDark,
+    color: theme.colors.textSecondary,
     lineHeight: 18,
     fontWeight: '500',
   },

@@ -10,6 +10,7 @@ import {
   Platform,
   ScrollView,
   ActivityIndicator,
+  SafeAreaView,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { theme, commonStyles } from '../styles/theme';
@@ -51,7 +52,6 @@ const ProfileScreen = ({ navigation }) => {
 
   const handleBackPress = () => {
     if (isNewUser) {
-      // For new users, we might want to prevent going back or show a warning
       Alert.alert(
         'Complete Profile',
         'Please complete your profile to continue using the app.',
@@ -64,245 +64,407 @@ const ProfileScreen = ({ navigation }) => {
 
   return (
     <GradientBackground>
-      {!isNewUser && (
-        <CommonHeader
-          title="Edit Profile"
-          icon="👤"
-          onBackPress={handleBackPress}
-        />
-      )}
-      
-      <KeyboardAvoidingView 
-        style={commonStyles.container} 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
-        <ScrollView 
-          style={commonStyles.scrollContainer} 
-          showsVerticalScrollIndicator={false}
+      <SafeAreaView style={commonStyles.safeContainer}>
+        {!isNewUser && (
+          <CommonHeader
+            title="Profile"
+            subtitle="Manage your gaming account"
+            icon="👤"
+            onBackPress={handleBackPress}
+          />
+        )}
+        
+        <KeyboardAvoidingView 
+          style={styles.container} 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
-          {/* Welcome Section for New Users */}
-          {isNewUser && (
-            <View style={styles.welcomeSection}>
-              <View style={[commonStyles.card, styles.welcomeCard]}>
-                <Text style={styles.welcomeEmoji}>🎉</Text>
-                <Text style={styles.welcomeText}>Welcome to Budzee!</Text>
-                <Text style={styles.welcomeSubtext}>
-                  You're just one step away from joining the ultimate gaming arena!
+          <ScrollView 
+            style={styles.scrollContainer}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            {/* Welcome Section for New Users */}
+            {isNewUser && (
+              <View style={styles.welcomeSection}>
+                <View style={styles.welcomeIconContainer}>
+                  <Text style={styles.welcomeIcon}>🎉</Text>
+                </View>
+                <Text style={styles.welcomeTitle}>Welcome to Budzee!</Text>
+                <Text style={styles.welcomeText}>
+                  You're just one step away from joining the ultimate gaming arena. 
+                  Complete your profile to start playing and winning real money!
                 </Text>
               </View>
-            </View>
-          )}
-          
-          {/* Profile Form */}
-          <View style={[commonStyles.card, styles.formCard]}>
-            <View style={styles.formHeader}>
-              <Text style={styles.formTitle}>
-                {isNewUser ? '📝 Setup Your Profile' : '✏️ Edit Information'}
-              </Text>
-            </View>
+            )}
+            
+            {/* Centered Profile Card */}
+            <View style={styles.profileCardContainer}>
+              <View style={[commonStyles.centerCard, styles.profileCard]}>
+                <View style={styles.profileHeader}>
+                  <View style={styles.avatarContainer}>
+                    <View style={styles.avatar}>
+                      <Text style={styles.avatarText}>
+                        {name ? name.charAt(0).toUpperCase() : '👤'}
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={styles.profileTitle}>
+                    {isNewUser ? '🚀 Setup Your Profile' : '✏️ Edit Profile'}
+                  </Text>
+                </View>
 
-            {/* Mobile Number Display */}
-            <View style={styles.fieldContainer}>
-              <Text style={styles.label}>📱 Mobile Number</Text>
-              <View style={styles.valueContainer}>
-                <Text style={styles.value}>{user?.phoneNumber}</Text>
-                <Text style={styles.verifiedBadge}>✅ Verified</Text>
+                {/* Mobile Number Display */}
+                <View style={styles.fieldContainer}>
+                  <Text style={styles.fieldLabel}>📱 Mobile Number</Text>
+                  <View style={styles.phoneContainer}>
+                    <Text style={styles.phoneNumber}>{user?.phoneNumber}</Text>
+                    <View style={styles.verifiedBadge}>
+                      <Text style={styles.verifiedText}>✅ Verified</Text>
+                    </View>
+                  </View>
+                </View>
+                
+                {/* Name Input */}
+                <View style={styles.fieldContainer}>
+                  <Text style={[styles.fieldLabel, styles.required]}>👤 Full Name *</Text>
+                  <TextInput
+                    style={[
+                      commonStyles.input,
+                      styles.textInput,
+                      !name.trim() && styles.inputError
+                    ]}
+                    value={name}
+                    onChangeText={setName}
+                    placeholder="Enter your full name"
+                    placeholderTextColor={theme.colors.textTertiary}
+                    autoCapitalize="words"
+                    returnKeyType="next"
+                    editable={!loading}
+                  />
+                  {!name.trim() && (
+                    <Text style={styles.errorText}>Name is required to continue</Text>
+                  )}
+                </View>
+                
+                {/* Email Input */}
+                <View style={styles.fieldContainer}>
+                  <Text style={styles.fieldLabel}>📧 Email Address (Optional)</Text>
+                  <TextInput
+                    style={[commonStyles.input, styles.textInput]}
+                    value={email}
+                    onChangeText={setEmail}
+                    placeholder="Enter your email address"
+                    placeholderTextColor={theme.colors.textTertiary}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    returnKeyType="done"
+                    editable={!loading}
+                  />
+                  <Text style={styles.fieldHint}>
+                    We'll use this for important updates and notifications
+                  </Text>
+                </View>
+                
+                {/* Save Button */}
+                <TouchableOpacity 
+                  style={[
+                    commonStyles.largeButton, 
+                    styles.saveButton,
+                    loading && styles.saveButtonDisabled
+                  ]} 
+                  onPress={handleSave} 
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <View style={styles.loadingContainer}>
+                      <ActivityIndicator color={theme.colors.textPrimary} size="small" />
+                      <Text style={[commonStyles.largeButtonText, styles.loadingText]}>
+                        {isNewUser ? 'Setting up...' : 'Saving...'}
+                      </Text>
+                    </View>
+                  ) : (
+                    <Text style={[commonStyles.largeButtonText, styles.saveButtonText]}>
+                      {isNewUser ? '🚀 Complete Setup & Start Playing' : '💾 Save Changes'}
+                    </Text>
+                  )}
+                </TouchableOpacity>
               </View>
             </View>
-            
-            {/* Name Input */}
-            <View style={styles.fieldContainer}>
-              <Text style={[styles.label, styles.required]}>👤 Full Name *</Text>
-              <TextInput
-                style={[commonStyles.input, !name.trim() && styles.inputError]}
-                value={name}
-                onChangeText={setName}
-                placeholder="Enter your full name"
-                placeholderTextColor={theme.colors.textLight}
-                autoCapitalize="words"
-                returnKeyType="next"
-              />
-              {!name.trim() && (
-                <Text style={styles.errorText}>Name is required</Text>
-              )}
-            </View>
-            
-            {/* Email Input */}
-            <View style={styles.fieldContainer}>
-              <Text style={styles.label}>📧 Email Address (Optional)</Text>
-              <TextInput
-                style={commonStyles.input}
-                value={email}
-                onChangeText={setEmail}
-                placeholder="Enter your email address"
-                placeholderTextColor={theme.colors.textLight}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                returnKeyType="done"
-              />
-            </View>
-            
-            {/* Save Button */}
-            <TouchableOpacity 
-              style={[commonStyles.button, styles.saveBtn, loading && styles.saveBtnDisabled]} 
-              onPress={handleSave} 
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color={theme.colors.textPrimary} size="small" />
-              ) : (
-                <Text style={commonStyles.buttonText}>
-                  {isNewUser ? '🚀 Complete Setup & Continue' : '💾 Save Changes'}
-                </Text>
-              )}
-            </TouchableOpacity>
-          </View>
 
-          {/* Gaming Features for New Users */}
-          {isNewUser && (
-            <View style={styles.section}>
-              <Text style={commonStyles.sectionTitle}>🎮 What's Waiting for You</Text>
-              <View style={styles.featuresGrid}>
-                <View style={styles.featureItem}>
-                  <Text style={styles.featureIcon}>🎲</Text>
-                  <Text style={styles.featureText}>Ludo Tournaments</Text>
-                </View>
-                <View style={styles.featureItem}>
-                  <Text style={styles.featureIcon}>💰</Text>
-                  <Text style={styles.featureText}>Real Money Wins</Text>
-                </View>
-                <View style={styles.featureItem}>
-                  <Text style={styles.featureIcon}>⚡</Text>
-                  <Text style={styles.featureText}>Instant Payouts</Text>
-                </View>
-                <View style={styles.featureItem}>
-                  <Text style={styles.featureIcon}>🏆</Text>
-                  <Text style={styles.featureText}>Leaderboards</Text>
+            {/* Gaming Features for New Users */}
+            {isNewUser && (
+              <View style={styles.featuresSection}>
+                <Text style={styles.featuresTitle}>🎮 What's Waiting for You</Text>
+                
+                <View style={styles.featuresGrid}>
+                  <View style={styles.featureCard}>
+                    <View style={styles.featureIconContainer}>
+                      <Text style={styles.featureIcon}>🧠</Text>
+                    </View>
+                    <Text style={styles.featureTitle}>Memory Games</Text>
+                    <Text style={styles.featureText}>
+                      Challenge your memory skills in exciting card matching tournaments
+                    </Text>
+                  </View>
+                  
+                  <View style={styles.featureCard}>
+                    <View style={styles.featureIconContainer}>
+                      <Text style={styles.featureIcon}>💰</Text>
+                    </View>
+                    <Text style={styles.featureTitle}>Real Money Wins</Text>
+                    <Text style={styles.featureText}>
+                      Win actual cash prizes that you can withdraw instantly
+                    </Text>
+                  </View>
+                  
+                  <View style={styles.featureCard}>
+                    <View style={styles.featureIconContainer}>
+                      <Text style={styles.featureIcon}>⚡</Text>
+                    </View>
+                    <Text style={styles.featureTitle}>Instant Payouts</Text>
+                    <Text style={styles.featureText}>
+                      Quick and secure money transfers directly to your bank
+                    </Text>
+                  </View>
+                  
+                  <View style={styles.featureCard}>
+                    <View style={styles.featureIconContainer}>
+                      <Text style={styles.featureIcon}>🏆</Text>
+                    </View>
+                    <Text style={styles.featureTitle}>Leaderboards</Text>
+                    <Text style={styles.featureText}>
+                      Compete with players across India and climb the rankings
+                    </Text>
+                  </View>
                 </View>
               </View>
-            </View>
-          )}
-        </ScrollView>
-      </KeyboardAvoidingView>
+            )}
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
     </GradientBackground>
   );
 };
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  scrollContainer: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingBottom: theme.spacing.xxxl,
+  },
+  
   welcomeSection: {
-    marginTop: theme.spacing.lg,
-    marginBottom: theme.spacing.sm,
-  },
-  welcomeCard: {
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'rgba(255, 230, 109, 0.3)',
+    marginVertical: theme.spacing.xl,
+    paddingHorizontal: theme.spacing.lg,
   },
-  welcomeEmoji: {
-    fontSize: 32,
-    marginBottom: theme.spacing.xs,
+  welcomeIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: theme.colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: theme.spacing.lg,
+    ...theme.shadows.primaryShadow,
+  },
+  welcomeIcon: {
+    fontSize: 36,
+  },
+  welcomeTitle: {
+    fontSize: theme.fonts.sizes.xxl,
+    fontWeight: 'bold',
+    color: theme.colors.textPrimary,
+    marginBottom: theme.spacing.md,
+    textAlign: 'center',
   },
   welcomeText: {
-    fontSize: theme.fonts.sizes.lg,
-    fontWeight: 'bold',
-    color: theme.colors.primary,
-    marginBottom: theme.spacing.xs,
-    textAlign: 'center',
-  },
-  welcomeSubtext: {
-    fontSize: theme.fonts.sizes.sm,
-    color: theme.colors.textLight,
-    textAlign: 'center',
-    lineHeight: 18,
-  },
-  formCard: {
-    borderWidth: 2,
-    borderColor: 'rgba(255, 107, 53, 0.2)',
-  },
-  formHeader: {
-    alignItems: 'center',
-    marginBottom: theme.spacing.md,
-  },
-  formTitle: {
     fontSize: theme.fonts.sizes.md,
+    color: theme.colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  
+  profileCardContainer: {
+    alignItems: 'center',
+    marginVertical: theme.spacing.lg,
+  },
+  profileCard: {
+    borderWidth: 2,
+    borderColor: theme.colors.primary,
+    ...theme.shadows.primaryShadow,
+  },
+  profileHeader: {
+    alignItems: 'center',
+    marginBottom: theme.spacing.xl,
+  },
+  avatarContainer: {
+    marginBottom: theme.spacing.lg,
+  },
+  avatar: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: theme.colors.secondary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: theme.colors.primary,
+    ...theme.shadows.successShadow,
+  },
+  avatarText: {
+    fontSize: theme.fonts.sizes.xxxl,
     fontWeight: 'bold',
-    color: theme.colors.primary,
+    color: theme.colors.textPrimary,
   },
+  profileTitle: {
+    fontSize: theme.fonts.sizes.xl,
+    fontWeight: 'bold',
+    color: theme.colors.textPrimary,
+    textAlign: 'center',
+  },
+  
   fieldContainer: {
-    marginBottom: theme.spacing.sm,
+    marginBottom: theme.spacing.xl,
+    width: '100%',
   },
-  label: { 
-    fontSize: theme.fonts.sizes.sm, 
-    color: theme.colors.textDark, 
-    marginBottom: theme.spacing.xs, 
+  fieldLabel: { 
+    fontSize: theme.fonts.sizes.lg, 
+    color: theme.colors.textPrimary, 
+    marginBottom: theme.spacing.md, 
     fontWeight: '600',
   },
   required: { 
-    color: theme.colors.danger,
+    color: theme.colors.textDanger,
   },
-  valueContainer: {
+  phoneContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: theme.colors.surfaceDark,
-    borderRadius: theme.borderRadius.md,
-    paddingVertical: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.sm,
+    backgroundColor: theme.colors.backgroundInput,
+    borderRadius: theme.borderRadius.lg,
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    ...theme.shadows.small,
   },
-  value: { 
-    fontSize: theme.fonts.sizes.sm, 
-    color: theme.colors.textDark, 
-    fontWeight: '500',
+  phoneNumber: { 
+    fontSize: theme.fonts.sizes.lg, 
+    color: theme.colors.textPrimary, 
+    fontWeight: '600',
   },
   verifiedBadge: {
-    fontSize: theme.fonts.sizes.xs,
-    color: theme.colors.success,
+    backgroundColor: theme.colors.success,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.borderRadius.md,
+  },
+  verifiedText: {
+    fontSize: theme.fonts.sizes.sm,
+    color: theme.colors.textPrimary,
     fontWeight: 'bold',
+  },
+  textInput: {
+    fontSize: theme.fonts.sizes.lg,
+    fontWeight: '500',
   },
   inputError: {
     borderColor: theme.colors.danger,
-    backgroundColor: 'rgba(231, 76, 60, 0.1)',
+    borderWidth: 2,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
   },
   errorText: {
-    fontSize: theme.fonts.sizes.xs,
-    color: theme.colors.danger,
-    marginTop: theme.spacing.xs,
-    fontWeight: '500',
-  },
-  saveBtn: {
+    fontSize: theme.fonts.sizes.sm,
+    color: theme.colors.textDanger,
     marginTop: theme.spacing.sm,
+    fontWeight: '600',
   },
-  saveBtnDisabled: {
+  fieldHint: {
+    fontSize: theme.fonts.sizes.sm,
+    color: theme.colors.textTertiary,
+    marginTop: theme.spacing.sm,
+    fontStyle: 'italic',
+  },
+  
+  saveButton: {
+    marginTop: theme.spacing.lg,
+    width: '100%',
+  },
+  saveButtonDisabled: {
     backgroundColor: theme.colors.textLight,
+    opacity: 0.6,
   },
-  section: {
-    marginBottom: theme.spacing.sm,
+  saveButtonText: {
+    fontSize: theme.fonts.sizes.lg,
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginLeft: theme.spacing.sm,
+  },
+  
+  featuresSection: {
+    marginTop: theme.spacing.xl,
+    paddingHorizontal: theme.spacing.md,
+  },
+  featuresTitle: {
+    fontSize: theme.fonts.sizes.xl,
+    fontWeight: 'bold',
+    color: theme.colors.textPrimary,
+    textAlign: 'center',
+    marginBottom: theme.spacing.xl,
   },
   featuresGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    gap: theme.spacing.xs,
+    gap: theme.spacing.md,
   },
-  featureItem: {
-    width: '48%',
+  featureCard: {
+    width: '47%',
     backgroundColor: theme.colors.surfaceCard,
-    borderRadius: theme.borderRadius.md,
-    padding: theme.spacing.sm,
+    borderRadius: theme.borderRadius.xl,
+    padding: theme.spacing.lg,
     alignItems: 'center',
-    ...theme.shadows.small,
     borderWidth: 1,
-    borderColor: 'rgba(78, 205, 196, 0.2)',
+    borderColor: theme.colors.border,
+    ...theme.shadows.small,
+  },
+  featureIconContainer: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: theme.colors.backgroundLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: theme.spacing.md,
+    borderWidth: 2,
+    borderColor: theme.colors.primary,
   },
   featureIcon: {
-    fontSize: 24,
-    marginBottom: theme.spacing.xs,
+    fontSize: 20,
+  },
+  featureTitle: {
+    fontSize: theme.fonts.sizes.md,
+    fontWeight: '600',
+    color: theme.colors.textPrimary,
+    marginBottom: theme.spacing.sm,
+    textAlign: 'center',
   },
   featureText: {
-    fontSize: theme.fonts.sizes.xs,
-    color: theme.colors.textDark,
+    fontSize: theme.fonts.sizes.sm,
+    color: theme.colors.textSecondary,
     textAlign: 'center',
-    fontWeight: '600',
+    lineHeight: 18,
   },
 });
 

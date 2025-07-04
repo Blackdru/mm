@@ -186,10 +186,10 @@ const MemoryGameScreen = ({ route, navigation }) => {
   const getCardGridPosition = (index) => {
     const cols = 5;
     const rows = 6;
-    const containerWidth = width - 50;
-    const cardSpacing = 8;
+    const containerWidth = width - 25; // Reduced from 50 to 40
+    const cardSpacing = 15; // Reduced spacing
     const cardWidth = (containerWidth - (cardSpacing * (cols + 1))) / cols;
-    const cardHeight = cardWidth; // Square cards
+    const cardHeight = cardWidth * 0.9; // Slightly rectangular for better fit
     
     const row = Math.floor(index / cols);
     const col = index % cols;
@@ -803,6 +803,8 @@ const MemoryGameScreen = ({ route, navigation }) => {
     
     // Optimistically update selected cards for immediate feedback
     setSelectedCards(prev => [...prev, position]);
+    setGameBoard(prev => prev.map((card, idx) => idx === position ? { ...card, isFlipped: true } : card));
+    animateCardFlip(position);
     
     // Emit card selection to server
     if (socket && socket.connected) {
@@ -812,13 +814,13 @@ const MemoryGameScreen = ({ route, navigation }) => {
         position,
       });
       setLastActivity(Date.now());
-      
       // Reset processing state after a short delay
       setTimeout(() => setIsProcessingCard(false), 500);
     } else {
       console.log('Socket not connected, cannot select card');
       // Revert optimistic update
       setSelectedCards(prev => prev.filter(p => p !== position));
+      setGameBoard(prev => prev.map((card, idx) => idx === position ? { ...card, isFlipped: false } : card));
       setIsProcessingCard(false);
     }
   };
@@ -1156,41 +1158,43 @@ const MemoryGameScreen = ({ route, navigation }) => {
             </View>
 
             <View style={styles.leaderboardList}>
-              {gameResults.leaderboard.map((player, index) => (
-                <View key={player.id} style={[
-                  styles.leaderboardItem,
-                  player.isWinner && styles.winnerItem
-                ]}>
-                  <View style={styles.rankContainer}>
-                    <Text style={styles.rankText}>#{index + 1}</Text>
-                    {player.isWinner && <Text style={styles.crownIcon}>👑</Text>}
+              {gameResults.leaderboard.map((player, index) => {
+                // Winner is always the first in the sorted leaderboard
+                const isWinner = index === 0;
+                return (
+                  <View key={player.id} style={[
+                    styles.leaderboardItem,
+                    isWinner && styles.winnerItem
+                  ]}>
+                    <View style={styles.rankContainer}>
+                      <Text style={styles.rankText}>#{index + 1}</Text>
+                      {isWinner && <Text style={styles.crownIcon}>👑</Text>}
+                    </View>
+                    <View style={styles.playerInfo}>
+                      <Text style={[
+                        styles.playerNameText,
+                        isWinner && styles.winnerText
+                      ]}>
+                        {player.displayName || player.name || 'Unknown Player'}
+                      </Text>
+                      <Text style={styles.playerScoreText}>
+                        Score: {typeof player.score === 'number' ? player.score : 0}
+                      </Text>
+                      <Text style={styles.playerLifelinesText}>
+                        ❤️ {player.lifelines || 0} lifelines
+                      </Text>
+                    </View>
+                    <View style={styles.winAmountContainer}>
+                      <Text style={[
+                        styles.winAmountText,
+                        isWinner && styles.winnerAmountText
+                      ]}>
+                        {isWinner ? `+₹${Number(prizePool || 0).toFixed(2)}` : '₹0.00'}
+                      </Text>
+                    </View>
                   </View>
-                  
-                  <View style={styles.playerInfo}>
-                    <Text style={[
-                      styles.playerNameText,
-                      player.isWinner && styles.winnerText
-                    ]}>
-                      {player.displayName || player.name || 'Unknown Player'}
-                    </Text>
-                    <Text style={styles.playerScoreText}>
-                      Score: {typeof player.score === 'number' ? player.score : 0}
-                    </Text>
-                    <Text style={styles.playerLifelinesText}>
-                      ❤️ {player.lifelines || 0} lifelines remaining
-                    </Text>
-                  </View>
-                  
-                  <View style={styles.winAmountContainer}>
-                    <Text style={[
-                      styles.winAmountText,
-                      player.isWinner && styles.winnerAmountText
-                    ]}>
-                      {player.winAmount > 0 ? `+₹${Number(prizePool || 0).toFixed(2)}` : '₹0.00'}
-                    </Text>
-                  </View>
-                </View>
-              ))}
+                );
+              })}
             </View>
 
             {/* Auto-close timer display */}
@@ -1217,55 +1221,61 @@ const MemoryGameScreen = ({ route, navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f0f23',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    backgroundColor: '#0a0a0a',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
   },
   header: {
     alignItems: 'center',
     marginBottom: 8,
-    paddingTop: 10,
+    paddingTop: 8,
+    paddingHorizontal: 4,
   },
   title: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: 'bold',
-    color: '#00d4ff',
-    marginBottom: 5,
-    textShadowColor: 'rgba(0, 212, 255, 0.3)',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 8,
+    color: '#ff6b35',
+    marginBottom: 4,
+    textShadowColor: 'rgba(255, 107, 53, 0.4)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 10,
+    textAlign: 'center',
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#a8b2d1',
-    marginBottom: 10,
+    marginBottom: 8,
+    textAlign: 'center',
+    fontWeight: '500',
   },
   scoreContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     width: '100%',
-    paddingHorizontal: 5,
+    paddingHorizontal: 4,
     gap: 8,
+    marginBottom: 6,
   },
   scoreCard: {
     flex: 1,
-    backgroundColor: '#1a1a2e',
+    backgroundColor: '#1a1a1a',
     borderRadius: 12,
-    padding: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 6,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#3a3f5f',
-    shadowColor: '#00d4ff',
+    borderColor: '#333333',
+    shadowColor: '#ff6b35',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.15,
     shadowRadius: 4,
     elevation: 3,
   },
   myScoreCard: {
-    backgroundColor: '#1e3a5f',
-    borderColor: '#00d4ff',
+    backgroundColor: '#2a1a0f',
+    borderColor: '#ff6b35',
     borderWidth: 2,
-    shadowColor: '#00d4ff',
+    shadowColor: '#ff6b35',
     shadowOpacity: 0.3,
     shadowRadius: 6,
     elevation: 6,
@@ -1277,22 +1287,22 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   scorePlayerName: {
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: 'bold',
     color: '#ccd6f6',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   myScorePlayerName: {
-    color: '#00d4ff',
+    color: '#ff6b35',
   },
   scoreText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
-    color: '#64ffda',
+    color: '#ffaa00',
   },
   myScoreText: {
-    color: '#00d4ff',
-    textShadowColor: 'rgba(0, 212, 255, 0.3)',
+    color: '#ff6b35',
+    textShadowColor: 'rgba(255, 107, 53, 0.3)',
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 4,
   },
@@ -1304,7 +1314,7 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   heartIcon: {
-    fontSize: 12,
+    fontSize: 10,
   },
   activeHeart: {
     color: '#ff6b6b',
@@ -1315,20 +1325,22 @@ const styles = StyleSheet.create({
     opacity: 0.3,
   },
   turnIndicatorContainer: {
-    height: 60,
+    height: 50,
     justifyContent: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
+    paddingHorizontal: 4,
   },
   turnContainer: {
     alignItems: 'center',
-    padding: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
     backgroundColor: '#1a1a2e',
     borderRadius: 15,
     borderWidth: 1,
     borderColor: '#3a3f5f',
     shadowColor: '#00d4ff',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.15,
     shadowRadius: 4,
     elevation: 3,
   },
@@ -1342,36 +1354,36 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   turnText: {
-    fontSize: 18,
+    fontSize: 14,
     color: '#ccd6f6',
     fontWeight: 'bold',
-    marginBottom: 8,
+    marginBottom: 4,
   },
   myTurnText: {
     color: '#00d4ff',
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: 'bold',
     textShadowColor: 'rgba(0, 212, 255, 0.4)',
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 6,
   },
   turnTimerContainer: {
-    height: 28,
+    height: 24,
     justifyContent: 'center',
-    paddingHorizontal: 15,
-    paddingVertical: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     backgroundColor: '#16213e',
-    borderRadius: 15,
-    minWidth: 80,
+    borderRadius: 12,
+    minWidth: 60,
   },
   turnTimerText: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: 'bold',
     color: '#64ffda',
     textAlign: 'center',
   },
   turnTimerPlaceholder: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: 'bold',
     color: '#8892b0',
     textAlign: 'center',
@@ -1387,17 +1399,17 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    marginVertical: 10,
-    paddingHorizontal: 10,
+    marginVertical: 4,
+    paddingHorizontal: 4,
   },
   gridContainer: {
     position: 'relative',
-    width: width - 50,
+    width: width - 40,
     height: (() => {
-      const containerWidth = width - 50;
-      const cardSpacing = 8;
+      const containerWidth = width - 40;
+      const cardSpacing = 4;
       const cardWidth = (containerWidth - (cardSpacing * 6)) / 5; // 5 cols, 6 spacings
-      const cardHeight = cardWidth;
+      const cardHeight = cardWidth * 0.9;
       return cardSpacing * 7 + cardHeight * 6; // 6 rows, 7 spacings
     })(),
     alignSelf: 'center',
@@ -1406,14 +1418,14 @@ const styles = StyleSheet.create({
   },
   gridCard: {
     position: 'absolute',
-    borderRadius: 12,
+    borderRadius: 8,
     backgroundColor: '#1a1a2e',
-    elevation: 8,
+    elevation: 4,
     shadowColor: '#00d4ff',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    borderWidth: 2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    borderWidth: 1,
     borderColor: '#3a3f5f',
   },
   boardContainer: {
@@ -1469,13 +1481,13 @@ const styles = StyleSheet.create({
     borderColor: '#00d4ff',
   },
   cardSymbol: {
-    fontSize: 40, // Increased for larger cards
+    fontSize: 18, // Further reduced for better fit
     color: '#a8b2d1',
     fontWeight: 'bold',
   },
   cardSymbolFlipped: {
     color: '#00d4ff',
-    fontSize: 44, // Increased for larger cards
+    fontSize: 20, // Further reduced for better fit
     fontWeight: 'bold',
     textShadowColor: 'rgba(0, 212, 255, 0.3)',
     textShadowOffset: { width: 0, height: 0 },
@@ -1681,24 +1693,27 @@ const styles = StyleSheet.create({
   controls: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: 10,
-    paddingBottom: 5,
+    marginTop: 8,
+    paddingBottom: 8,
+    paddingHorizontal: 8,
   },
   controlButton: {
     backgroundColor: '#ff6b6b',
-    paddingHorizontal: 25,
-    paddingVertical: 12,
-    borderRadius: 25,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
     shadowColor: '#ff6b6b',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
-    elevation: 5,
+    elevation: 4,
+    minWidth: 100,
+    alignItems: 'center',
   },
   controlButtonText: {
     color: '#fff',
     fontWeight: 'bold',
-    fontSize: 16,
+    fontSize: 14,
   },
   connectionStatus: {
     backgroundColor: '#ff6b6b',

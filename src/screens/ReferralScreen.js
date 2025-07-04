@@ -1,314 +1,376 @@
-import React, { useState, useEffect } from 'react';
+import React, {useState, useEffect} from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
-  ScrollView,
+  Alert,
   Share,
   Clipboard,
-  Alert,
-  RefreshControl,
+  SafeAreaView,
 } from 'react-native';
+import {useAuth} from '../context/AuthContext';
 import { theme, commonStyles } from '../styles/theme';
 import GradientBackground from '../components/GradientBackground';
 import CommonHeader from '../components/CommonHeader';
-import { useAuth } from '../context/AuthContext';
-import config from '../config/config';
 
-const ReferralScreen = ({ navigation }) => {
-  const { user, token } = useAuth();
+const ReferralScreen = ({navigation}) => {
+  const {user} = useAuth();
   const [referralCode, setReferralCode] = useState('');
   const [referralStats, setReferralStats] = useState({
     totalReferrals: 0,
     totalEarnings: 0,
     pendingEarnings: 0,
-    referredUsers: []
   });
-  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    fetchReferralData();
-  }, []);
+    // Generate referral code based on user phone or ID
+    const code = user?.phoneNumber ? 
+      `BUDZ${user.phoneNumber.slice(-4)}${Math.random().toString(36).substr(2, 4).toUpperCase()}` :
+      `BUDZ${Math.random().toString(36).substr(2, 8).toUpperCase()}`;
+    setReferralCode(code);
+  }, [user]);
 
-  const fetchReferralData = async () => {
+  const handleCopyCode = async () => {
     try {
-      const response = await fetch(`${config.SERVER_URL}/api/profile/referral`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setReferralCode(data.referralCode);
-        setReferralStats(data.stats);
-      } else {
-        console.error('Failed to fetch referral data');
-      }
+      await Clipboard.setString(referralCode);
+      Alert.alert('Copied!', 'Referral code copied to clipboard');
     } catch (error) {
-      console.error('Error fetching referral data:', error);
+      Alert.alert('Error', 'Failed to copy referral code');
     }
   };
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await fetchReferralData();
-    setRefreshing(false);
-  };
-
-  const copyReferralCode = () => {
-    Clipboard.setString(referralCode);
-    Alert.alert('Copied!', 'Referral code copied to clipboard');
-  };
-
-  const shareReferral = async () => {
+  const handleShareCode = async () => {
     try {
-      const message = `🎮 Join me on Budzee - The ultimate gaming platform! 
+      const shareMessage = `🎮 Join me on Budzee Gaming App and win real money! 
 
 Use my referral code: ${referralCode}
 
-🎁 Get ₹50 bonus when you sign up
-🎲 Play exciting games like Ludo & Memory
-💰 Win real money prizes
+💰 You get ₹50 bonus on signup
+🎁 I get ₹25 when you play your first game
 
-Download now and start winning!`;
+Download now: https://budzee.app/download
+
+#BudzeeGaming #RealMoney #Gaming`;
 
       await Share.share({
-        message: message,
-        title: 'Join Budzee Gaming',
+        message: shareMessage,
+        title: 'Join Budzee Gaming App',
       });
     } catch (error) {
-      console.error('Error sharing:', error);
+      Alert.alert('Error', 'Failed to share referral code');
     }
   };
 
-  const handleBackPress = () => {
-    console.log('Back button pressed in ReferralScreen');
-    navigation.navigate('Home');
-  };
+  const rewards = [
+    {
+      icon: '🎁',
+      title: 'Sign Up Bonus',
+      description: 'Friend gets ₹50 on registration',
+      amount: '₹50',
+      color: theme.colors.success,
+    },
+    {
+      icon: '💰',
+      title: 'First Game Bonus',
+      description: 'You get ₹25 when they play',
+      amount: '₹25',
+      color: theme.colors.primary,
+    },
+    {
+      icon: '🏆',
+      title: 'Lifetime Earnings',
+      description: '5% of their game fees forever',
+      amount: '5%',
+      color: theme.colors.accent,
+    },
+  ];
 
   return (
     <GradientBackground>
-      <CommonHeader
-        title="Refer & Earn"
-        subtitle="Invite friends and earn rewards"
-        icon="🎁"
-        onBackPress={handleBackPress}
-      />
-      
-      <ScrollView 
-        style={commonStyles.scrollContainer} 
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl 
-            refreshing={refreshing} 
-            onRefresh={onRefresh}
-            tintColor={theme.colors.primary}
-            colors={[theme.colors.primary]}
-          />
-        }>
-        
+      <SafeAreaView style={styles.container}>
+        <CommonHeader
+          title="Refer & Earn"
+          subtitle="Invite friends and earn rewards"
+          icon="🎁"
+          onBackPress={() => navigation.navigate('Home')}
+        />
+
         {/* Referral Code Section */}
-        <View style={styles.section}>
-          <Text style={commonStyles.sectionTitle}>Your Referral Code</Text>
-          <View style={[commonStyles.card, styles.codeCard]}>
-            <View style={styles.codeContainer}>
-              <Text style={styles.codeLabel}>Share this code with friends:</Text>
-              <View style={styles.codeBox}>
-                <Text style={styles.codeText}>{referralCode}</Text>
-                <TouchableOpacity style={styles.copyButton} onPress={copyReferralCode}>
-                  <Text style={styles.copyButtonText}>📋 Copy</Text>
-                </TouchableOpacity>
+        <View style={styles.codeSection}>
+          <View style={[commonStyles.attractiveCard, styles.codeCard]}>
+            <View style={styles.codeHeader}>
+              <View style={styles.codeIconContainer}>
+                <Text style={styles.codeIcon}>🔗</Text>
               </View>
+              <Text style={styles.codeTitle}>Your Referral Code</Text>
             </View>
             
-            <TouchableOpacity style={[commonStyles.button, styles.shareButton]} onPress={shareReferral}>
-              <Text style={commonStyles.buttonText}>📤 Share with Friends</Text>
-            </TouchableOpacity>
+            <View style={styles.codeDisplay}>
+              <Text style={styles.codeText}>{referralCode}</Text>
+            </View>
+            
+            <View style={styles.codeActions}>
+              <TouchableOpacity
+                style={[styles.codeButton, styles.copyButton]}
+                onPress={handleCopyCode}>
+                <Text style={styles.copyButtonText}>📋 Copy Code</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[styles.codeButton, styles.shareButton]}
+                onPress={handleShareCode}>
+                <Text style={styles.shareButtonText}>📤 Share Now</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
 
-        {/* Earnings Summary */}
-        <View style={styles.section}>
-          <Text style={commonStyles.sectionTitle}>Your Earnings</Text>
+        {/* Stats Section */}
+        <View style={styles.statsSection}>
           <View style={styles.statsGrid}>
-            <View style={[commonStyles.card, styles.statCard]}>
-              <Text style={styles.statIcon}>👥</Text>
+            <View style={styles.statCard}>
               <Text style={styles.statValue}>{referralStats.totalReferrals}</Text>
               <Text style={styles.statLabel}>Total Referrals</Text>
             </View>
-            
-            <View style={[commonStyles.card, styles.statCard]}>
-              <Text style={styles.statIcon}>💰</Text>
-              <Text style={styles.statValue}>₹{referralStats.totalEarnings.toFixed(2)}</Text>
+            <View style={styles.statCard}>
+              <Text style={[styles.statValue, styles.earningsValue]}>
+                ₹{referralStats.totalEarnings}
+              </Text>
               <Text style={styles.statLabel}>Total Earned</Text>
             </View>
-            
-            <View style={[commonStyles.card, styles.statCard]}>
-              <Text style={styles.statIcon}>⏳</Text>
-              <Text style={styles.statValue}>₹{referralStats.pendingEarnings.toFixed(2)}</Text>
+            <View style={styles.statCard}>
+              <Text style={[styles.statValue, styles.pendingValue]}>
+                ₹{referralStats.pendingEarnings}
+              </Text>
               <Text style={styles.statLabel}>Pending</Text>
             </View>
           </View>
         </View>
 
+        {/* Rewards Section */}
+        <View style={styles.rewardsSection}>
+          <Text style={styles.sectionTitle}>💎 Referral Rewards</Text>
+          
+          <View style={styles.rewardsList}>
+            {rewards.map((reward, index) => (
+              <View key={index} style={[styles.rewardCard, { borderLeftColor: reward.color }]}>
+                <View style={styles.rewardHeader}>
+                  <Text style={styles.rewardIcon}>{reward.icon}</Text>
+                  <View style={styles.rewardInfo}>
+                    <Text style={styles.rewardTitle}>{reward.title}</Text>
+                    <Text style={styles.rewardDescription}>{reward.description}</Text>
+                  </View>
+                  <Text style={[styles.rewardAmount, { color: reward.color }]}>
+                    {reward.amount}
+                  </Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        </View>
+
         {/* How it Works */}
-        <View style={styles.section}>
-          <Text style={commonStyles.sectionTitle}>How it Works</Text>
-          <View style={commonStyles.card}>
-            <View style={styles.stepContainer}>
-              <View style={styles.step}>
-                <Text style={styles.stepNumber}>1</Text>
-                <View style={styles.stepContent}>
-                  <Text style={styles.stepTitle}>Share Your Code</Text>
-                  <Text style={styles.stepDescription}>Send your referral code to friends</Text>
-                </View>
+        <View style={styles.howItWorksSection}>
+          <Text style={styles.sectionTitle}>🚀 How It Works</Text>
+          
+          <View style={styles.stepsList}>
+            <View style={styles.step}>
+              <View style={styles.stepNumber}>
+                <Text style={styles.stepNumberText}>1</Text>
               </View>
-              
-              <View style={styles.step}>
-                <Text style={styles.stepNumber}>2</Text>
-                <View style={styles.stepContent}>
-                  <Text style={styles.stepTitle}>Friend Signs Up</Text>
-                  <Text style={styles.stepDescription}>They register using your code</Text>
-                </View>
+              <Text style={styles.stepText}>Share your referral code with friends</Text>
+            </View>
+            
+            <View style={styles.step}>
+              <View style={styles.stepNumber}>
+                <Text style={styles.stepNumberText}>2</Text>
               </View>
-              
-              <View style={styles.step}>
-                <Text style={styles.stepNumber}>3</Text>
-                <View style={styles.stepContent}>
-                  <Text style={styles.stepTitle}>Both Get Rewards</Text>
-                  <Text style={styles.stepDescription}>You get ₹25, they get ₹50 bonus</Text>
-                </View>
+              <Text style={styles.stepText}>They sign up using your code</Text>
+            </View>
+            
+            <View style={styles.step}>
+              <View style={styles.stepNumber}>
+                <Text style={styles.stepNumberText}>3</Text>
               </View>
-              
-              <View style={styles.step}>
-                <Text style={styles.stepNumber}>4</Text>
-                <View style={styles.stepContent}>
-                  <Text style={styles.stepTitle}>Extra Bonus</Text>
-                  <Text style={styles.stepDescription}>Get 5% of their first game winnings</Text>
-                </View>
-              </View>
+              <Text style={styles.stepText}>Both of you earn instant rewards!</Text>
             </View>
           </View>
         </View>
-
-        {/* Referred Users */}
-        {referralStats.referredUsers.length > 0 && (
-          <View style={styles.section}>
-            <Text style={commonStyles.sectionTitle}>Your Referrals</Text>
-            <View style={commonStyles.card}>
-              {referralStats.referredUsers.map((user, index) => (
-                <View key={index} style={styles.referredUser}>
-                  <View style={styles.userInfo}>
-                    <Text style={styles.userName}>{user.name}</Text>
-                    <Text style={styles.userDate}>Joined: {new Date(user.joinedAt).toLocaleDateString()}</Text>
-                  </View>
-                  <View style={styles.userEarnings}>
-                    <Text style={styles.earningsAmount}>₹{user.earnings.toFixed(2)}</Text>
-                    <Text style={styles.earningsLabel}>Earned</Text>
-                  </View>
-                </View>
-              ))}
-            </View>
-          </View>
-        )}
-
-        {/* Terms */}
-        <View style={styles.section}>
-          <View style={[commonStyles.card, styles.termsCard]}>
-            <Text style={styles.termsTitle}>📋 Terms & Conditions</Text>
-            <Text style={styles.termsText}>
-              • Referral bonus is credited after friend's first deposit{'\n'}
-              • Minimum withdrawal amount is ₹100{'\n'}
-              • Bonus earnings from referrals are subject to 1x wagering{'\n'}
-              • Fraudulent referrals will result in account suspension{'\n'}
-              • Budzee reserves the right to modify terms
-            </Text>
-          </View>
-        </View>
-      </ScrollView>
+      </SafeAreaView>
     </GradientBackground>
   );
 };
 
 const styles = StyleSheet.create({
-  section: {
-    marginBottom: theme.spacing.sm,
+  container: {
+    flex: 1,
+  },
+  
+  codeSection: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.md,
   },
   codeCard: {
-    alignItems: 'center',
+    borderColor: theme.colors.primary,
+    borderWidth: 2,
   },
-  codeContainer: {
-    width: '100%',
-    marginBottom: theme.spacing.md,
-  },
-  codeLabel: {
-    fontSize: theme.fonts.sizes.sm,
-    color: theme.colors.textLight,
-    textAlign: 'center',
-    marginBottom: theme.spacing.sm,
-  },
-  codeBox: {
+  codeHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.backgroundLight,
-    borderRadius: theme.borderRadius.md,
-    padding: theme.spacing.sm,
-    borderWidth: 2,
-    borderColor: theme.colors.primary,
+    marginBottom: theme.spacing.lg,
   },
-  codeText: {
-    flex: 1,
+  codeIconContainer: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: theme.colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: theme.spacing.md,
+    ...theme.shadows.primaryShadow,
+  },
+  codeIcon: {
+    fontSize: 24,
+  },
+  codeTitle: {
     fontSize: theme.fonts.sizes.lg,
     fontWeight: 'bold',
-    color: theme.colors.primary,
-    textAlign: 'center',
+    color: theme.colors.textPrimary,
+  },
+  codeDisplay: {
+    backgroundColor: theme.colors.backgroundLight,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.lg,
+    alignItems: 'center',
+    marginBottom: theme.spacing.lg,
+    borderWidth: 2,
+    borderColor: theme.colors.primary,
+    borderStyle: 'dashed',
+  },
+  codeText: {
+    fontSize: theme.fonts.sizes.xxl,
+    fontWeight: 'bold',
+    color: theme.colors.textPrimary,
     letterSpacing: 2,
   },
+  codeActions: {
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+  },
+  codeButton: {
+    flex: 1,
+    paddingVertical: theme.spacing.md,
+    borderRadius: theme.borderRadius.lg,
+    alignItems: 'center',
+    ...theme.shadows.small,
+  },
   copyButton: {
-    backgroundColor: theme.colors.primary,
-    borderRadius: theme.borderRadius.sm,
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.xs,
+    backgroundColor: theme.colors.secondary,
+  },
+  shareButton: {
+    backgroundColor: theme.colors.accent,
   },
   copyButtonText: {
     color: theme.colors.textPrimary,
-    fontSize: theme.fonts.sizes.sm,
-    fontWeight: 'bold',
+    fontSize: theme.fonts.sizes.md,
+    fontWeight: '600',
   },
-  shareButton: {
-    backgroundColor: theme.colors.success,
-    minWidth: 200,
+  shareButtonText: {
+    color: theme.colors.textPrimary,
+    fontSize: theme.fonts.sizes.md,
+    fontWeight: '600',
+  },
+  
+  statsSection: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.lg,
   },
   statsGrid: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    gap: theme.spacing.xs,
+    gap: theme.spacing.sm,
   },
   statCard: {
     flex: 1,
+    backgroundColor: theme.colors.surfaceCard,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.md,
     alignItems: 'center',
-    paddingVertical: theme.spacing.md,
-  },
-  statIcon: {
-    fontSize: 24,
-    marginBottom: theme.spacing.xs,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
   statValue: {
     fontSize: theme.fonts.sizes.lg,
     fontWeight: 'bold',
-    color: theme.colors.primary,
-    marginBottom: theme.spacing.xs,
+    color: theme.colors.textPrimary,
+  },
+  earningsValue: {
+    color: theme.colors.success,
+  },
+  pendingValue: {
+    color: theme.colors.warning,
   },
   statLabel: {
     fontSize: theme.fonts.sizes.xs,
-    color: theme.colors.textLight,
+    color: theme.colors.textSecondary,
+    marginTop: theme.spacing.xs,
     textAlign: 'center',
   },
-  stepContainer: {
+  
+  rewardsSection: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingBottom: theme.spacing.lg,
+  },
+  sectionTitle: {
+    fontSize: theme.fonts.sizes.lg,
+    fontWeight: 'bold',
+    color: theme.colors.textPrimary,
+    marginBottom: theme.spacing.md,
+  },
+  rewardsList: {
     gap: theme.spacing.sm,
+  },
+  rewardCard: {
+    backgroundColor: theme.colors.surfaceCard,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.md,
+    borderLeftWidth: 4,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  rewardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  rewardIcon: {
+    fontSize: 20,
+    marginRight: theme.spacing.md,
+  },
+  rewardInfo: {
+    flex: 1,
+  },
+  rewardTitle: {
+    fontSize: theme.fonts.sizes.md,
+    fontWeight: '600',
+    color: theme.colors.textPrimary,
+  },
+  rewardDescription: {
+    fontSize: theme.fonts.sizes.sm,
+    color: theme.colors.textSecondary,
+    marginTop: 2,
+  },
+  rewardAmount: {
+    fontSize: theme.fonts.sizes.lg,
+    fontWeight: 'bold',
+  },
+  
+  howItWorksSection: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingBottom: theme.spacing.lg,
+  },
+  stepsList: {
+    gap: theme.spacing.md,
   },
   step: {
     flexDirection: 'row',
@@ -319,73 +381,21 @@ const styles = StyleSheet.create({
     height: 32,
     borderRadius: 16,
     backgroundColor: theme.colors.primary,
-    color: theme.colors.textPrimary,
-    fontSize: theme.fonts.sizes.sm,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    lineHeight: 32,
-    marginRight: theme.spacing.sm,
-  },
-  stepContent: {
-    flex: 1,
-  },
-  stepTitle: {
-    fontSize: theme.fonts.sizes.sm,
-    fontWeight: 'bold',
-    color: theme.colors.textDark,
-    marginBottom: 2,
-  },
-  stepDescription: {
-    fontSize: theme.fonts.sizes.xs,
-    color: theme.colors.textLight,
-  },
-  referredUser: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: theme.spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.backgroundLight,
+    marginRight: theme.spacing.md,
+    ...theme.shadows.small,
   },
-  userInfo: {
-    flex: 1,
-  },
-  userName: {
-    fontSize: theme.fonts.sizes.sm,
-    fontWeight: 'bold',
-    color: theme.colors.textDark,
-  },
-  userDate: {
-    fontSize: theme.fonts.sizes.xs,
-    color: theme.colors.textLight,
-    marginTop: 2,
-  },
-  userEarnings: {
-    alignItems: 'flex-end',
-  },
-  earningsAmount: {
-    fontSize: theme.fonts.sizes.sm,
-    fontWeight: 'bold',
-    color: theme.colors.success,
-  },
-  earningsLabel: {
-    fontSize: theme.fonts.sizes.xs,
-    color: theme.colors.textLight,
-  },
-  termsCard: {
-    borderLeftWidth: 4,
-    borderLeftColor: theme.colors.warning,
-  },
-  termsTitle: {
+  stepNumberText: {
     fontSize: theme.fonts.sizes.md,
     fontWeight: 'bold',
-    color: theme.colors.warning,
-    marginBottom: theme.spacing.sm,
+    color: theme.colors.textPrimary,
   },
-  termsText: {
-    fontSize: theme.fonts.sizes.sm,
-    color: theme.colors.textDark,
-    lineHeight: 18,
+  stepText: {
+    fontSize: theme.fonts.sizes.md,
+    color: theme.colors.textSecondary,
+    flex: 1,
+    fontWeight: '500',
   },
 });
 

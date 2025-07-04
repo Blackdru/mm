@@ -6,13 +6,15 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
-  Animated,
   BackHandler,
   Modal,
   Dimensions,
+  SafeAreaView,
 } from 'react-native';
 import {useAuth} from '../context/AuthContext';
 import {useGame} from '../context/GameContext';
+import { theme, commonStyles } from '../styles/theme';
+import GradientBackground from '../components/GradientBackground';
 
 const { width } = Dimensions.get('window');
 
@@ -35,50 +37,31 @@ const MatchmakingScreen = ({navigation, route}) => {
   
   const [playersFound, setPlayersFound] = useState(0);
   const [waitTime, setWaitTime] = useState(0);
-  const [pulseAnim] = useState(new Animated.Value(1));
   const [countdown, setCountdown] = useState(null);
   const [showMatchFoundModal, setShowMatchFoundModal] = useState(false);
-  const [modalAnimation] = useState(new Animated.Value(0));
-  const [countdownPulse] = useState(new Animated.Value(1));
 
-  // Force reset to idle when component mounts to ensure clean state
   useEffect(() => {
-    console.log('🔄 MatchmakingScreen mounted - forcing reset to idle state');
-    console.log('🔍 Current state on mount:', { connectionStatus, matchmakingStatus, gameId, playerId });
-    
-    // Reset to idle immediately when component mounts
     resetToIdle();
-  }, []); // Run only once on mount
+  }, []);
 
   useEffect(() => {
-    console.log('🔍 MatchmakingScreen useEffect - connectionStatus:', connectionStatus, 'matchmakingStatus:', matchmakingStatus);
-    
-    // Start matchmaking when component mounts and socket is connected
     if (connectionStatus === 'connected') {
-      console.log('🎯 Starting matchmaking - connection ready');
-      
-      // Force start matchmaking regardless of current status
       if (matchmakingStatus === 'idle') {
-        console.log('✅ Status is idle, starting immediately');
         setTimeout(() => {
           startMatchmaking();
         }, 100);
       } else {
-        console.log('⚠️ Status is not idle, forcing reset and then starting');
         resetToIdle();
         setTimeout(() => {
           startMatchmaking();
-        }, 500); // Longer delay to ensure reset is complete
+        }, 500);
       }
     }
     
     const timerCleanup = startWaitTimer();
-    startPulseAnimation();
-
-    // Handle Android back button
     const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
       handleBackPress();
-      return true; // Prevent default behavior
+      return true;
     });
 
     return () => {
@@ -87,29 +70,14 @@ const MatchmakingScreen = ({navigation, route}) => {
       }
       backHandler.remove();
     };
-  }, [connectionStatus]); // Only depend on connectionStatus to avoid infinite loops
+  }, [connectionStatus]);
 
-  // Handle matchmaking status changes
   useEffect(() => {
-    console.log('🔍 Matchmaking status changed:', matchmakingStatus, 'GameId:', gameId);
     if (matchmakingStatus === 'found' && gameId) {
-      console.log('✅ Match found detected, handling...');
       handleMatchFound();
     }
   }, [matchmakingStatus, gameId]);
 
-  // Also listen for direct gameId changes (in case status doesn't update properly)
-  useEffect(() => {
-    if (gameId && matchmakingStatus !== 'idle') {
-      console.log('🎮 GameId received:', gameId, 'Status:', matchmakingStatus);
-      if (!showMatchFoundModal) {
-        console.log('✅ Triggering match found from gameId change');
-        handleMatchFound();
-      }
-    }
-  }, [gameId]);
-
-  // Handle errors
   useEffect(() => {
     if (error) {
       Alert.alert('Error', error, [
@@ -136,57 +104,14 @@ const MatchmakingScreen = ({navigation, route}) => {
   };
 
   const startMatchmaking = () => {
-    const gameType = game.id === 'memory' ? 'MEMORY' : 
-                    game.id === 'fast_ludo' ? 'FAST_LUDO' : 
-                    game.id === 'snakes_ladders' ? 'SNAKES_LADDERS' :
-                    game.id === 'classic_ludo' ? 'CLASSIC_LUDO' : 'CLASSIC_LUDO';
-    
-    console.log('🎯 Starting matchmaking for:', gameType, playerCount, entryFee);
-    console.log('🔍 Current matchmaking status before start:', matchmakingStatus);
-    console.log('🔍 Current connection status:', connectionStatus);
-    console.log('🔍 Socket connected:', socket?.connected);
-    
+    const gameType = 'MEMORY';
     joinMatchmaking(gameType, playerCount, entryFee);
   };
 
   const handleMatchFound = () => {
-    console.log('Match found! GameId:', gameId, 'PlayerId:', playerId || user?.id);
-    
-    // Show match found modal with animation
     setShowMatchFoundModal(true);
-    
-    // Animate modal entrance
-    Animated.spring(modalAnimation, {
-      toValue: 1,
-      useNativeDriver: true,
-      tension: 100,
-      friction: 8,
-    }).start();
-    
-    // Start countdown pulse animation
-    const startCountdownPulse = () => {
-      Animated.sequence([
-        Animated.timing(countdownPulse, {
-          toValue: 1.2,
-          duration: 500,
-          useNativeDriver: true,
-        }),
-        Animated.timing(countdownPulse, {
-          toValue: 1,
-          duration: 500,
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
-        if (countdown > 0) {
-          startCountdownPulse();
-        }
-      });
-    };
-    
-    // Start 5-second countdown
     let countdownValue = 5;
     setCountdown(countdownValue);
-    startCountdownPulse();
 
     const countdownInterval = setInterval(() => {
       countdownValue--;
@@ -194,15 +119,8 @@ const MatchmakingScreen = ({navigation, route}) => {
       
       if (countdownValue <= 0) {
         clearInterval(countdownInterval);
-        // Animate modal exit
-        Animated.timing(modalAnimation, {
-          toValue: 0,
-          duration: 300,
-          useNativeDriver: true,
-        }).start(() => {
-          setShowMatchFoundModal(false);
-          redirectToGame();
-        });
+        setShowMatchFoundModal(false);
+        redirectToGame();
       }
     }, 1000);
   };
@@ -211,50 +129,13 @@ const MatchmakingScreen = ({navigation, route}) => {
     const playerIdToUse = playerId || user?.id;
     const playerNameToUse = user?.name || user?.phoneNumber || 'Player';
     
-    console.log('🎮 Redirecting to game:', {
-      gameType: game.id,
-      gameId: gameId,
+    navigation.navigate('MemoryGame', {
+      roomId: gameId,
       playerId: playerIdToUse,
       playerName: playerNameToUse,
-      userFromAuth: user,
-      playersFromGame: players
+      socket: socket,
+      players: players,
     });
-    
-    // Route to appropriate game screen based on game type
-    if (game.id === 'memory') {
-      navigation.navigate('MemoryGame', {
-        roomId: gameId,
-        playerId: playerIdToUse,
-        playerName: playerNameToUse,
-        socket: socket,
-        players: players, // Pass matched players data
-      });
-    } else if (game.id === 'fast_ludo') {
-      navigation.navigate('FastLudoGame', {
-        gameId: gameId,
-        playerId: playerIdToUse,
-        playerName: playerNameToUse,
-        socket: socket,
-        players: players, // Pass matched players data
-      });
-    } else if (game.id === 'snakes_ladders') {
-      navigation.navigate('SnakesLaddersGame', {
-        gameId: gameId,
-        playerId: playerIdToUse,
-        playerName: playerNameToUse,
-        socket: socket,
-        players: players, // Pass matched players data
-      });
-    } else if (game.id === 'classic_ludo') {
-      navigation.navigate('Game', {
-        gameId: gameId,
-        playerId: playerIdToUse,
-        playerName: playerNameToUse,
-        socket: socket,
-        game: game,
-        players: players, // Pass matched players data
-      });
-    }
   };
 
   const handleLeaveMatchmaking = () => {
@@ -267,7 +148,6 @@ const MatchmakingScreen = ({navigation, route}) => {
       setWaitTime((prev) => prev + 1);
     }, 1000);
 
-    // Auto-cancel after 2 minutes for testing
     const timeout = setTimeout(() => {
       clearInterval(interval);
       if (matchmakingStatus === 'searching') {
@@ -284,34 +164,12 @@ const MatchmakingScreen = ({navigation, route}) => {
           ]
         );
       }
-    }, 120000); // 2 minutes
+    }, 120000);
 
     return () => {
       clearInterval(interval);
       clearTimeout(timeout);
     };
-  };
-
-  const startPulseAnimation = () => {
-    const pulse = () => {
-      Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 1.2,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
-        if (matchmakingStatus === 'searching') {
-          pulse();
-        }
-      });
-    };
-    pulse();
   };
 
   const formatTime = (seconds) => {
@@ -322,7 +180,7 @@ const MatchmakingScreen = ({navigation, route}) => {
 
   const getStatusMessage = () => {
     if (connectionStatus === 'connecting') {
-      return 'Connecting to matchmaking...';
+      return 'Connecting to battle arena...';
     }
     if (connectionStatus === 'disconnected') {
       return 'Connection lost. Please try again.';
@@ -330,389 +188,325 @@ const MatchmakingScreen = ({navigation, route}) => {
     
     switch (matchmakingStatus) {
       case 'idle':
-        return 'Preparing matchmaking...';
+        return 'Preparing for battle...';
       case 'searching':
-        return 'Searching for players...';
+        return 'Searching for worthy opponents...';
       case 'found':
-        return 'Match found! Joining game...';
+        return 'Match found! Entering battle...';
       case 'error':
         return 'Error occurred. Please try again.';
       default:
-        return 'Preparing matchmaking...';
+        return 'Preparing for battle...';
     }
   };
 
   const getStatusColor = () => {
-    if (connectionStatus === 'connecting') {
-      return '#f39c12';
-    }
-    if (connectionStatus === 'disconnected') {
-      return '#e74c3c';
-    }
+    if (connectionStatus === 'connecting') return theme.colors.warning;
+    if (connectionStatus === 'disconnected') return theme.colors.danger;
     
     switch (matchmakingStatus) {
-      case 'idle':
-        return '#95a5a6';
-      case 'searching':
-        return '#3498db';
-      case 'found':
-        return '#27ae60';
-      case 'error':
-        return '#e74c3c';
-      default:
-        return '#95a5a6';
+      case 'idle': return theme.colors.textSecondary;
+      case 'searching': return theme.colors.primary;
+      case 'found': return theme.colors.success;
+      case 'error': return theme.colors.danger;
+      default: return theme.colors.textSecondary;
     }
   };
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.title}>Finding Players</Text>
-        <Text style={styles.subtitle}>
-          {game.name} • {playerCount} Players • ₹{entryFee}
-        </Text>
-      </View>
-
-      {/* Matchmaking Animation */}
-      <View style={styles.animationContainer}>
-        <Animated.View
-          style={[
-            styles.pulseCircle,
-            {
-              transform: [{scale: pulseAnim}],
-              backgroundColor: getStatusColor(),
-            },
-          ]}>
-          <Text style={styles.gameIcon}>{game.image}</Text>
-        </Animated.View>
-        
-        <Text style={[styles.statusText, {color: getStatusColor()}]}>
-          {getStatusMessage()}
-        </Text>
-        
-        {(matchmakingStatus === 'searching' || connectionStatus === 'connecting') && (
-          <ActivityIndicator
-            size="large"
-            color={getStatusColor()}
-            style={styles.loader}
-          />
-        )}
-      </View>
-
-      {/* Match Info */}
-      <View style={styles.infoContainer}>
-        <View style={styles.infoCard}>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Wait Time:</Text>
-            <Text style={styles.infoValue}>{formatTime(waitTime)}</Text>
-          </View>
-          
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Players Found:</Text>
-            <Text style={styles.infoValue}>
-              {playersFound}/{playerCount}
-            </Text>
-          </View>
-          
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Entry Fee:</Text>
-            <Text style={styles.infoValue}>₹{entryFee}</Text>
-          </View>
-          
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Prize Pool:</Text>
-            <Text style={[styles.infoValue, styles.prizeValue]}>
-              ₹{(entryFee * playerCount * 0.9).toFixed(0)}
-            </Text>
-          </View>
-
-                  </View>
-      </View>
-
-      {/* Tips */}
-      <View style={styles.tipsContainer}>
-        <Text style={styles.tipsTitle}>💡 While you wait...</Text>
-        <Text style={styles.tipsText}>
-          • Keep the app open for faster matchmaking{'\n'}
-          • Check your internet connection{'\n'}
-          • Entry fee is already deducted{'\n'}
-          • You'll get a refund if no match is found
-        </Text>
-      </View>
-
-      {/* Cancel Button */}
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          style={styles.cancelButton}
-          onPress={handleBackPress}>
-          <Text style={styles.cancelButtonText}>Cancel & Refund</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Match Found Modal */}
-      <Modal
-        visible={showMatchFoundModal}
-        transparent={true}
-        animationType="none"
-        onRequestClose={() => {}} // Prevent closing
-      >
-        <View style={styles.modalOverlay}>
-          <Animated.View
-            style={[
-              styles.modalContainer,
-              {
-                transform: [
-                  {
-                    scale: modalAnimation.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [0.8, 1],
-                    }),
-                  },
-                ],
-                opacity: modalAnimation,
-              },
-            ]}
-          >
-            {/* Success Icon */}
-            <View style={styles.successIconContainer}>
-              <Text style={styles.successIcon}>🎉</Text>
-            </View>
-            
-            {/* Match Found Text */}
-            <Text style={styles.modalTitle}>Match Found!</Text>
-            <Text style={styles.modalSubtitle}>
-              {playerCount} players ready to play {game.name}
-            </Text>
-            
-            {/* Countdown Circle */}
-            <Animated.View 
-              style={[
-                styles.countdownCircle,
-                {
-                  transform: [{ scale: countdownPulse }]
-                }
-              ]}
-            >
-              <Text style={styles.countdownNumber}>{countdown}</Text>
-            </Animated.View>
-            
-            {/* Starting Text */}
-            <Text style={styles.startingText}>
-              Game starting in {countdown} second{countdown !== 1 ? 's' : ''}...
-            </Text>
-            
-            {/* Game Info */}
-            <View style={styles.modalGameInfo}>
-              <Text style={styles.modalGameText}>
-                🎮 {game.name} • 👥 {playerCount} Players • 💰 ₹{entryFee}
-              </Text>
-              <Text style={styles.modalPrizeText}>
-                Prize Pool: ₹{(entryFee * playerCount * 0.9).toFixed(0)}
-              </Text>
-            </View>
-          </Animated.View>
+    <GradientBackground>
+      <SafeAreaView style={styles.container}>
+        {/* Header - Compact */}
+        <View style={styles.header}>
+          <Text style={styles.title}>🔍 Finding Players</Text>
+          <Text style={styles.subtitle}>
+            {game.name} • {playerCount} Players • ₹{entryFee}
+          </Text>
         </View>
-      </Modal>
-    </View>
+
+        {/* Status Section - Main Focus */}
+        <View style={styles.statusSection}>
+          <View style={[styles.statusIcon, { backgroundColor: getStatusColor() }]}>
+            <Text style={styles.gameIcon}>{game.emoji}</Text>
+          </View>
+          
+          <Text style={[styles.statusText, { color: getStatusColor() }]}>
+            {getStatusMessage()}
+          </Text>
+          
+          {(matchmakingStatus === 'searching' || connectionStatus === 'connecting') && (
+            <ActivityIndicator
+              size="large"
+              color={getStatusColor()}
+              style={styles.loader}
+            />
+          )}
+        </View>
+
+        {/* Info Grid - Compact */}
+        <View style={styles.infoSection}>
+          <View style={styles.infoGrid}>
+            <View style={styles.infoCard}>
+              <Text style={styles.infoIcon}>⏱️</Text>
+              <Text style={styles.infoValue}>{formatTime(waitTime)}</Text>
+              <Text style={styles.infoLabel}>Wait Time</Text>
+            </View>
+            
+            <View style={styles.infoCard}>
+              <Text style={styles.infoIcon}>👥</Text>
+              <Text style={styles.infoValue}>{playersFound}/{playerCount}</Text>
+              <Text style={styles.infoLabel}>Players</Text>
+            </View>
+            
+            <View style={styles.infoCard}>
+              <Text style={styles.infoIcon}>🏆</Text>
+              <Text style={[styles.infoValue, styles.prizeValue]}>
+                ₹{(entryFee * playerCount * 0.8).toFixed(0)}
+              </Text>
+              <Text style={styles.infoLabel}>Prize Pool</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Tips - Compact */}
+        <View style={styles.tipsSection}>
+          <View style={styles.tipsCard}>
+            <Text style={styles.tipsTitle}>💡 While You Wait</Text>
+            <Text style={styles.tipsText}>
+              Keep app open • Entry fee deducted • Refund if no match in 5 min
+            </Text>
+          </View>
+        </View>
+
+        {/* Cancel Button - Bottom */}
+        <View style={styles.buttonSection}>
+          <TouchableOpacity
+            style={styles.cancelButton}
+            onPress={handleBackPress}>
+            <Text style={styles.cancelButtonText}>
+              🚫 Cancel & Get Refund
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Match Found Modal */}
+        <Modal
+          visible={showMatchFoundModal}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => {}}>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContainer}>
+              <Text style={styles.successIcon}>🎉</Text>
+              <Text style={styles.modalTitle}>Match Found!</Text>
+              <Text style={styles.modalSubtitle}>
+                {playerCount} players ready for battle
+              </Text>
+              
+              <View style={styles.countdownCircle}>
+                <Text style={styles.countdownNumber}>{countdown}</Text>
+              </View>
+              
+              <Text style={styles.startingText}>
+                Starting in {countdown} second{countdown !== 1 ? 's' : ''}...
+              </Text>
+              
+              <Text style={styles.modalPrizeText}>
+                🏆 Prize: ₹{(entryFee * playerCount * 0.8).toFixed(0)}
+              </Text>
+            </View>
+          </View>
+        </Modal>
+      </SafeAreaView>
+    </GradientBackground>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    paddingHorizontal: theme.spacing.lg,
   },
+  
   header: {
-    backgroundColor: '#ffffff',
-    padding: 20,
     alignItems: 'center',
+    paddingVertical: theme.spacing.lg,
     borderBottomWidth: 1,
-    borderBottomColor: '#e1e8ed',
+    borderBottomColor: theme.colors.border,
   },
   title: {
-    fontSize: 24,
+    fontSize: theme.fonts.sizes.xl,
     fontWeight: 'bold',
-    color: '#2c3e50',
-    marginBottom: 4,
+    color: theme.colors.textPrimary,
+    marginBottom: theme.spacing.xs,
   },
   subtitle: {
-    fontSize: 16,
-    color: '#7f8c8d',
+    fontSize: theme.fonts.sizes.md,
+    color: theme.colors.textSecondary,
+    fontWeight: '500',
   },
-  animationContainer: {
+  
+  statusSection: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 40,
+    paddingVertical: theme.spacing.xl,
   },
-  pulseCircle: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+  statusIcon: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: theme.spacing.xl,
+    ...theme.shadows.large,
   },
   gameIcon: {
     fontSize: 48,
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
   },
   statusText: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 20,
+    fontSize: theme.fonts.sizes.lg,
+    fontWeight: 'bold',
     textAlign: 'center',
+    marginBottom: theme.spacing.lg,
   },
   loader: {
-    marginTop: 10,
+    marginTop: theme.spacing.md,
   },
-  infoContainer: {
-    padding: 20,
+  
+  infoSection: {
+    paddingVertical: theme.spacing.lg,
+  },
+  infoGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
   },
   infoCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    alignItems: 'center',
+    backgroundColor: theme.colors.surfaceCard,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.md,
+    minWidth: 80,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
-  infoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  infoLabel: {
-    fontSize: 16,
-    color: '#7f8c8d',
+  infoIcon: {
+    fontSize: 20,
+    marginBottom: theme.spacing.sm,
   },
   infoValue: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#2c3e50',
+    fontSize: theme.fonts.sizes.md,
+    fontWeight: 'bold',
+    color: theme.colors.textPrimary,
+    marginBottom: theme.spacing.xs,
   },
   prizeValue: {
-    color: '#27ae60',
+    color: theme.colors.accent,
   },
-  tipsContainer: {
-    margin: 20,
-    backgroundColor: '#e8f4fd',
-    borderRadius: 12,
-    padding: 16,
+  infoLabel: {
+    fontSize: theme.fonts.sizes.xs,
+    color: theme.colors.textSecondary,
+    textAlign: 'center',
+  },
+  
+  tipsSection: {
+    paddingVertical: theme.spacing.lg,
+  },
+  tipsCard: {
+    backgroundColor: theme.colors.surfaceCard,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.md,
     borderLeftWidth: 4,
-    borderLeftColor: '#3498db',
+    borderLeftColor: theme.colors.info,
   },
   tipsTitle: {
-    fontSize: 16,
+    fontSize: theme.fonts.sizes.md,
     fontWeight: 'bold',
-    color: '#2980b9',
-    marginBottom: 8,
+    color: theme.colors.textPrimary,
+    marginBottom: theme.spacing.sm,
   },
   tipsText: {
-    fontSize: 14,
-    color: '#2980b9',
-    lineHeight: 20,
+    fontSize: theme.fonts.sizes.sm,
+    color: theme.colors.textSecondary,
+    lineHeight: 18,
   },
-  buttonContainer: {
-    padding: 20,
+  
+  buttonSection: {
+    paddingBottom: theme.spacing.lg,
   },
   cancelButton: {
-    backgroundColor: '#e74c3c',
-    borderRadius: 8,
-    padding: 16,
+    backgroundColor: theme.colors.danger,
+    borderRadius: theme.borderRadius.lg,
+    paddingVertical: theme.spacing.lg,
     alignItems: 'center',
+    ...theme.shadows.medium,
   },
   cancelButtonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '600',
+    color: theme.colors.textPrimary,
+    fontSize: theme.fonts.sizes.lg,
+    fontWeight: 'bold',
   },
+  
   // Modal Styles
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: theme.spacing.lg,
   },
   modalContainer: {
-    backgroundColor: '#ffffff',
-    borderRadius: 20,
-    padding: 30,
+    backgroundColor: theme.colors.surfaceCard,
+    borderRadius: theme.borderRadius.xl,
+    padding: theme.spacing.xl,
     alignItems: 'center',
-    marginHorizontal: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 10,
-    minWidth: Dimensions.get('window').width * 0.8,
-  },
-  successIconContainer: {
-    marginBottom: 20,
+    borderWidth: 2,
+    borderColor: theme.colors.success,
+    width: '90%',
   },
   successIcon: {
-    fontSize: 60,
+    fontSize: 48,
+    marginBottom: theme.spacing.lg,
   },
   modalTitle: {
-    fontSize: 28,
+    fontSize: theme.fonts.sizes.xxl,
     fontWeight: 'bold',
-    color: '#27ae60',
-    marginBottom: 8,
-    textAlign: 'center',
+    color: theme.colors.textSuccess,
+    marginBottom: theme.spacing.sm,
   },
   modalSubtitle: {
-    fontSize: 16,
-    color: '#7f8c8d',
-    marginBottom: 30,
+    fontSize: theme.fonts.sizes.md,
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.xl,
     textAlign: 'center',
   },
   countdownCircle: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#27ae60',
+    backgroundColor: theme.colors.accent,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
-    shadowColor: '#27ae60',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 5,
+    marginBottom: theme.spacing.lg,
+    borderWidth: 3,
+    borderColor: theme.colors.textPrimary,
   },
   countdownNumber: {
-    fontSize: 32,
+    fontSize: theme.fonts.sizes.xxxl,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: theme.colors.textPrimary,
   },
   startingText: {
-    fontSize: 18,
-    color: '#2c3e50',
-    marginBottom: 25,
-    textAlign: 'center',
-    fontWeight: '600',
-  },
-  modalGameInfo: {
-    alignItems: 'center',
-    paddingTop: 20,
-    borderTopWidth: 1,
-    borderTopColor: '#ecf0f1',
-    width: '100%',
-  },
-  modalGameText: {
-    fontSize: 16,
-    color: '#34495e',
-    marginBottom: 8,
-    textAlign: 'center',
+    fontSize: theme.fonts.sizes.lg,
+    color: theme.colors.textPrimary,
+    marginBottom: theme.spacing.lg,
+    fontWeight: 'bold',
   },
   modalPrizeText: {
-    fontSize: 18,
+    fontSize: theme.fonts.sizes.lg,
     fontWeight: 'bold',
-    color: '#27ae60',
-    textAlign: 'center',
+    color: theme.colors.accent,
   },
 });
 
