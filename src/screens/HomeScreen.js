@@ -19,17 +19,39 @@ const { width } = Dimensions.get('window');
 
 const HomeScreen = ({navigation}) => {
   const {user, logout} = useAuth();
-  const {balance, fetchBalance} = useWallet();
+  const {balance, transactions, fetchBalance, fetchTransactions} = useWallet();
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     fetchBalance();
+    fetchTransactions();
   }, []);
 
   const onRefresh = async () => {
     setRefreshing(true);
     await fetchBalance();
+    await fetchTransactions();
     setRefreshing(false);
+  };
+
+  const calculateGamesWon = () => {
+    if (!Array.isArray(transactions)) return 0;
+    return transactions.filter(t => t.type === 'GAME_WINNING' && t.status === 'COMPLETED').length;
+  };
+
+  const calculateTotalWinnings = () => {
+    if (!Array.isArray(transactions)) return '0';
+    return transactions
+      .filter(t => t.type === 'GAME_WINNING' && t.status === 'COMPLETED')
+      .reduce((sum, t) => sum + Math.abs(parseFloat(t.amount) || 0), 0)
+      .toFixed(0);
+  };
+
+  const calculateWinRate = () => {
+    if (!Array.isArray(transactions)) return 0;
+    const gamesPlayed = transactions.filter(t => t.type === 'GAME_ENTRY' && t.status === 'COMPLETED').length;
+    const gamesWon = calculateGamesWon();
+    return gamesPlayed > 0 ? Math.round((gamesWon / gamesPlayed) * 100) : 0;
   };
 
   const handleLogout = () => {
@@ -102,7 +124,7 @@ const HomeScreen = ({navigation}) => {
               </View>
               <View style={styles.walletInfo}>
                 <Text style={styles.walletLabel}>Gaming Wallet</Text>
-                <Text style={styles.walletAmount}>₹{balance.toFixed(2)}</Text>
+                <Text style={styles.walletAmount}>₹{(balance || 0).toFixed(2)}</Text>
               </View>
               <TouchableOpacity
                 style={styles.addMoneyButton}
@@ -113,17 +135,17 @@ const HomeScreen = ({navigation}) => {
             
             <View style={styles.walletStats}>
               <View style={styles.statItem}>
-                <Text style={styles.statValue}>0</Text>
+                <Text style={styles.statValue}>{calculateGamesWon()}</Text>
                 <Text style={styles.statLabel}>Games Won</Text>
               </View>
               <View style={styles.statDivider} />
               <View style={styles.statItem}>
-                <Text style={styles.statValue}>₹0</Text>
+                <Text style={styles.statValue}>₹{calculateTotalWinnings()}</Text>
                 <Text style={styles.statLabel}>Total Winnings</Text>
               </View>
               <View style={styles.statDivider} />
               <View style={styles.statItem}>
-                <Text style={styles.statValue}>0%</Text>
+                <Text style={styles.statValue}>{calculateWinRate()}%</Text>
                 <Text style={styles.statLabel}>Win Rate</Text>
               </View>
             </View>
@@ -163,12 +185,14 @@ const HomeScreen = ({navigation}) => {
                 <Text style={styles.actionSubtext}>Earn rewards</Text>
               </TouchableOpacity>
               
-              <TouchableOpacity style={[styles.actionButton, styles.infoAction]}>
+              <TouchableOpacity 
+                style={[styles.actionButton, styles.infoAction]}
+                onPress={() => navigation.navigate('Settings')}>
                 <View style={styles.actionIconContainer}>
-                  <Text style={styles.actionIcon}>📊</Text>
+                  <Text style={styles.actionIcon}>⚙️</Text>
                 </View>
-                <Text style={styles.actionText}>Stats</Text>
-                <Text style={styles.actionSubtext}>View progress</Text>
+                <Text style={styles.actionText}>Settings</Text>
+                <Text style={styles.actionSubtext}>App settings</Text>
               </TouchableOpacity>
             </View>
           </View>

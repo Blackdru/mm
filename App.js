@@ -13,6 +13,9 @@ import MemoryGameScreen from './src/screens/MemoryGame';
 import WalletScreen from './src/screens/WalletScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import ReferralScreen from './src/screens/ReferralScreen';
+import SettingsScreen from './src/screens/SettingsScreen';
+import FAQScreen from './src/screens/FAQScreen';
+import AboutScreen from './src/screens/AboutScreen';
 
 // Context
 import {AuthProvider, useAuth} from './src/context/AuthContext';
@@ -30,12 +33,23 @@ import GradientBackground from './src/components/GradientBackground';
 const AppNavigator = () => {
   const [currentScreen, setCurrentScreen] = useState('Auth');
   const [screenParams, setScreenParams] = useState({});
-  const {user, loading} = useAuth();
+  const {user, loading, isAuthenticated} = useAuth();
 
   const navigate = (screenName, params = {}) => {
     setCurrentScreen(screenName);
     setScreenParams(params);
   };
+
+  const goBack = () => {
+    // Simple back navigation - go to Home for now
+    // In a real app, you'd maintain a navigation stack
+    setCurrentScreen('Home');
+    setScreenParams({});
+  };
+
+  // Screens that should show connection status
+  const gameScreens = ['Matchmaking', 'MemoryGame', 'PlayerSelection', 'AmountSelection'];
+  const shouldShowConnectionStatus = isAuthenticated && gameScreens.includes(currentScreen);
 
   useEffect(() => {
     if (!loading) {
@@ -64,25 +78,31 @@ const AppNavigator = () => {
 
     switch (currentScreen) {
       case 'Auth':
-        return <AuthScreen navigation={{navigate}} />;
+        return <AuthScreen navigation={{navigate, goBack}} />;
       case 'Home':
-        return <HomeScreen navigation={{navigate}} />;
+        return <HomeScreen navigation={{navigate, goBack}} />;
       case 'PlayerSelection':
-        return <PlayerSelectionScreen navigation={{navigate}} route={{params: screenParams}} />;
+        return <PlayerSelectionScreen navigation={{navigate, goBack}} route={{params: screenParams}} />;
       case 'AmountSelection':
-        return <AmountSelectionScreen navigation={{navigate}} route={{params: screenParams}} />;
+        return <AmountSelectionScreen navigation={{navigate, goBack}} route={{params: screenParams}} />;
       case 'Matchmaking':
-        return <MatchmakingScreen navigation={{navigate}} route={{params: screenParams}} />;
+        return <MatchmakingScreen navigation={{navigate, goBack}} route={{params: screenParams}} />;
       case 'MemoryGame':
-        return <MemoryGameScreen navigation={{navigate}} route={{params: screenParams}} />;
+        return <MemoryGameScreen navigation={{navigate, goBack}} route={{params: screenParams}} />;
       case 'Wallet':
-        return <WalletScreen navigation={{navigate}} />;
+        return <WalletScreen navigation={{navigate, goBack}} />;
       case 'Profile':
-        return <ProfileScreen navigation={{navigate}} />;
+        return <ProfileScreen navigation={{navigate, goBack}} />;
       case 'Referral':
-        return <ReferralScreen navigation={{navigate}} />;
+        return <ReferralScreen navigation={{navigate, goBack}} />;
+      case 'Settings':
+        return <SettingsScreen navigation={{navigate, goBack}} />;
+      case 'FAQ':
+        return <FAQScreen navigation={{navigate, goBack}} />;
+      case 'About':
+        return <AboutScreen navigation={{navigate, goBack}} />;
       default:
-        return <HomeScreen navigation={{navigate}} />;
+        return <HomeScreen navigation={{navigate, goBack}} />;
     }
   };
 
@@ -95,7 +115,7 @@ const AppNavigator = () => {
       />
       <SafeAreaView style={styles.safeArea}>
         <GradientBackground>
-          <ConnectionStatus />
+          {shouldShowConnectionStatus && <ConnectionStatus />}
           <ErrorBoundary navigation={{navigate}}>
             {renderScreen()}
           </ErrorBoundary>

@@ -10,6 +10,7 @@ import {
   Modal,
   Dimensions,
   SafeAreaView,
+  Animated,
 } from 'react-native';
 import {useAuth} from '../context/AuthContext';
 import {useGame} from '../context/GameContext';
@@ -39,6 +40,7 @@ const MatchmakingScreen = ({navigation, route}) => {
   const [waitTime, setWaitTime] = useState(0);
   const [countdown, setCountdown] = useState(null);
   const [showMatchFoundModal, setShowMatchFoundModal] = useState(false);
+  const [pulseAnim] = useState(new Animated.Value(1));
 
   useEffect(() => {
     resetToIdle();
@@ -77,6 +79,23 @@ const MatchmakingScreen = ({navigation, route}) => {
       handleMatchFound();
     }
   }, [matchmakingStatus, gameId]);
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.1,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, [pulseAnim]);
 
   useEffect(() => {
     if (error) {
@@ -246,11 +265,11 @@ const MatchmakingScreen = ({navigation, route}) => {
         {/* Info Grid - Compact */}
         <View style={styles.infoSection}>
           <View style={styles.infoGrid}>
-            <View style={styles.infoCard}>
+            <Animated.View style={[styles.infoCard, styles.highlightedTimerCard, { transform: [{ scale: pulseAnim }] }]}>
               <Text style={styles.infoIcon}>⏱️</Text>
-              <Text style={styles.infoValue}>{formatTime(waitTime)}</Text>
-              <Text style={styles.infoLabel}>Wait Time</Text>
-            </View>
+              <Text style={[styles.infoValue, styles.highlightedTimerValue]}>{formatTime(waitTime)}</Text>
+              <Text style={[styles.infoLabel, styles.highlightedTimerLabel]}>Wait Time</Text>
+            </Animated.View>
             
             <View style={styles.infoCard}>
               <Text style={styles.infoIcon}>👥</Text>
@@ -390,6 +409,27 @@ const styles = StyleSheet.create({
     minWidth: 80,
     borderWidth: 1,
     borderColor: theme.colors.border,
+  },
+  highlightedTimerCard: {
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.accent,
+    borderWidth: 2,
+    shadowColor: theme.colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  highlightedTimerValue: {
+    color: theme.colors.textPrimary,
+    fontSize: theme.fonts.sizes.lg,
+    textShadowColor: 'rgba(255, 255, 255, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  highlightedTimerLabel: {
+    color: theme.colors.textPrimary,
+    fontWeight: 'bold',
   },
   infoIcon: {
     fontSize: 20,

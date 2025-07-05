@@ -133,11 +133,12 @@ const WalletScreen = ({navigation}) => {
 
     setLoading(true);
     try {
-      const withdrawalDetails = {
+      const details = withdrawDetails[withdrawMethod];
+      const withdrawalData = {
         method: withdrawMethod,
-        details: withdrawDetails[withdrawMethod]
+        details: details,
       };
-      const result = await createWithdrawal(amountNum, withdrawalDetails);
+      const result = await createWithdrawal(amountNum, withdrawalData);
       
       if (result.success) {
         setShowWithdrawModal(false);
@@ -165,50 +166,88 @@ const WalletScreen = ({navigation}) => {
     });
   };
 
-  const getTransactionIcon = (type) => {
+  const getTransactionIcon = (type, status) => {
+    if (status === 'FAILED') return '❌';
+    if (status === 'PENDING') return '⏳';
+    
     switch (type) {
-      case 'deposit': return '💳';
-      case 'withdrawal': return '🏦';
-      case 'game_win': return '🏆';
-      case 'game_loss': return '🎮';
-      case 'refund': return '↩️';
+      case 'DEPOSIT': return '💳';
+      case 'WITHDRAWAL': return '🏦';
+      case 'GAME_WINNING': return '🏆';
+      case 'GAME_ENTRY': return '🎮';
+      case 'REFUND': return '↩️';
       default: return '💰';
     }
   };
 
-  const getTransactionColor = (type) => {
+  const getTransactionColor = (type, status) => {
+    if (status === 'FAILED') return theme.colors.danger;
+    if (status === 'PENDING') return theme.colors.warning;
+    
     switch (type) {
-      case 'deposit':
-      case 'game_win':
-      case 'refund':
+      case 'DEPOSIT':
+      case 'GAME_WINNING':
+      case 'REFUND':
         return theme.colors.success;
-      case 'withdrawal':
-      case 'game_loss':
+      case 'WITHDRAWAL':
+      case 'GAME_ENTRY':
         return theme.colors.danger;
       default:
         return theme.colors.textSecondary;
     }
   };
 
+  const getGameName = (gameId) => {
+    if (!gameId) return '';
+    return 'Memory Game'; // Default game name
+  };
+
+  const calculateTotalWon = () => {
+    if (!Array.isArray(transactions)) return '0';
+    return transactions
+      .filter(t => ['GAME_WINNING', 'REFUND'].includes(t.type) && t.status === 'COMPLETED')
+      .reduce((sum, t) => sum + Math.abs(parseFloat(t.amount) || 0), 0)
+      .toFixed(0);
+  };
+
+  const calculateTotalSpent = () => {
+    if (!Array.isArray(transactions)) return '0';
+    return transactions
+      .filter(t => t.type === 'GAME_ENTRY' && t.status === 'COMPLETED')
+      .reduce((sum, t) => sum + Math.abs(parseFloat(t.amount) || 0), 0)
+      .toFixed(0);
+  };
+
+  const calculateGamesPlayed = () => {
+    if (!Array.isArray(transactions)) return 0;
+    return transactions
+      .filter(t => t.type === 'GAME_ENTRY' && t.status === 'COMPLETED')
+      .length;
+  };
+
   const renderTransaction = ({ item }) => (
-    <View style={styles.transactionItem}>
+    <View style={[
+      styles.transactionItem,
+      item.status === 'PENDING' && styles.pendingTransaction,
+      item.status === 'FAILED' && styles.failedTransaction
+    ]}>
       <Text style={styles.transactionIcon}>
-        {getTransactionIcon(item.type)}
+        {getTransactionIcon(item.type, item.status)}
       </Text>
       <View style={styles.transactionDetails}>
         <Text style={styles.transactionTitle} numberOfLines={1}>
-          {item.description}
+          {item.gameId ? `${getGameName(item.gameId)} - ${item.description}` : item.description}
         </Text>
         <Text style={styles.transactionDate}>
-          {formatDate(item.createdAt)}
+          {formatDate(item.createdAt)} • {item.status || 'COMPLETED'}
         </Text>
       </View>
       <Text style={[
         styles.transactionAmount,
-        { color: getTransactionColor(item.type) }
+        { color: getTransactionColor(item.type, item.status) }
       ]}>
-        {item.type === 'withdrawal' || item.type === 'game_loss' ? '-' : '+'}
-        ₹{Math.abs(item.amount).toFixed(0)}
+        {['WITHDRAWAL', 'GAME_ENTRY'].includes(item.type) ? '-' : '+'}
+        ₹{Math.abs(item.amount).toFixed(2)}
       </Text>
     </View>
   );
@@ -232,7 +271,7 @@ const WalletScreen = ({navigation}) => {
               </View>
               <View style={styles.balanceInfo}>
                 <Text style={styles.balanceLabel}>Available Balance</Text>
-                <Text style={styles.balanceAmount}>₹{balance.toFixed(2)}</Text>
+                <Text style={styles.balanceAmount}>₹{(balance || 0).toFixed(2)}</Text>
               </View>
             </View>
             
@@ -256,15 +295,15 @@ const WalletScreen = ({navigation}) => {
         <View style={styles.statsSection}>
           <View style={styles.statsGrid}>
             <View style={styles.statCard}>
-              <Text style={styles.statValue}>₹0</Text>
+              <Text style={styles.statValue}>₹{calculateTotalWon()}</Text>
               <Text style={styles.statLabel}>Total Won</Text>
             </View>
             <View style={styles.statCard}>
-              <Text style={styles.statValue}>₹0</Text>
+              <Text style={styles.statValue}>₹{calculateTotalSpent()}</Text>
               <Text style={styles.statLabel}>Total Spent</Text>
             </View>
             <View style={styles.statCard}>
-              <Text style={styles.statValue}>0</Text>
+              <Text style={styles.statValue}>{calculateGamesPlayed()}</Text>
               <Text style={styles.statLabel}>Games</Text>
             </View>
           </View>
@@ -359,7 +398,7 @@ const WalletScreen = ({navigation}) => {
             <View style={styles.modalContainer}>
               <Text style={styles.modalTitle}>💰 Withdraw Money</Text>
               
-              <Text style={styles.modalLabel}>Available: ₹{balance.toFixed(2)}</Text>
+              <Text style={styles.modalLabel}>Available: ₹{(balance || 0).toFixed(2)}</Text>
               <TextInput
                 style={styles.modalInput}
                 placeholder="Enter amount (Min ₹100)"
@@ -647,6 +686,14 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.sm,
     borderWidth: 1,
     borderColor: theme.colors.border,
+  },
+  pendingTransaction: {
+    borderColor: theme.colors.warning,
+    backgroundColor: 'rgba(243, 156, 18, 0.1)',
+  },
+  failedTransaction: {
+    borderColor: theme.colors.danger,
+    backgroundColor: 'rgba(231, 76, 60, 0.1)',
   },
   transactionIcon: {
     fontSize: 20,

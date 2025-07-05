@@ -1,12 +1,15 @@
 import React from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
 import { useGame } from '../context/GameContext';
+import { useAuth } from '../context/AuthContext';
 import { theme } from '../styles/theme';
 
-const ConnectionStatus = () => {
+const ConnectionStatus = ({ showOnlyInGame = false }) => {
   const { connectionStatus, error } = useGame();
+  const { isAuthenticated } = useAuth();
   const [pulseAnim] = React.useState(new Animated.Value(1));
 
+  // Always call hooks first, then handle early returns
   React.useEffect(() => {
     if (connectionStatus === 'connecting') {
       const pulse = () => {
@@ -31,6 +34,11 @@ const ConnectionStatus = () => {
     }
   }, [connectionStatus, pulseAnim]);
 
+  // Don't show connection status on auth screen or when not authenticated
+  if (!isAuthenticated && showOnlyInGame) {
+    return null;
+  }
+
   if (connectionStatus === 'connected' && !error) {
     return null; // Don't show anything when connected and no errors
   }
@@ -49,14 +57,14 @@ const ConnectionStatus = () => {
       case 'connecting':
         return {
           icon: '🔄',
-          text: 'Connecting...',
+          text: 'Connecting to game server...',
           color: theme.colors.warning,
           backgroundColor: 'rgba(243, 156, 18, 0.1)',
         };
       case 'disconnected':
         return {
           icon: '📡',
-          text: 'Disconnected - Reconnecting...',
+          text: 'Connection lost - Attempting to reconnect...',
           color: theme.colors.danger,
           backgroundColor: 'rgba(231, 76, 60, 0.1)',
         };

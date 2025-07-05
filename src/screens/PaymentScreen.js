@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useState, useEffect} from 'react';
 import {
   View,
   Text,
@@ -7,113 +7,185 @@ import {
   SafeAreaView,
   Alert,
   ActivityIndicator,
+  AppState,
 } from 'react-native';
 import RazorpayCheckout from 'react-native-razorpay';
-import RazorpayNativeCheckout from '../utils/RazorpayNative';
 import config from '../config/config';
+import { useAuth } from '../context/AuthContext';
+import { useWallet } from '../context/WalletContext';
 
 const PaymentScreen = ({navigation, route}) => {
   const {playerCount} = route.params;
   const [loading, setLoading] = useState(false);
-  const amount = config.PAYMENT_CONFIG.ENTRY_FEES[playerCount];
+  const [appState, setAppState] = useState(AppState.currentState);
+  const [paymentInProgress, setPaymentInProgress] = useState(false);
+  const { user, token } = useAuth();
+  const { addTransaction } = useWallet();
+  
+  const amount = config.PAYMENT_CONFIG?.ENTRY_FEES?.[playerCount] || 10;
+
+  // Handle app state changes to detect when user returns from payment gateway
+  useEffect(() => {
+    const handleAppStateChange = (nextAppState) => {
+      if (appState.match(/inactive|background/) && nextAppState === 'active') {
+        console.log('App has come to the foreground after payment');
+        if (paymentInProgress) {
+          // Give some time for payment callback to process
+          setTimeout(() => {
+            if (paymentInProgress) {
+              setPaymentInProgress(false);
+              setLoading(false);
+              Alert.alert(
+                'Payment Status Unknown',
+                'Please check your wallet for payment status or contact support.',
+                [
+                  { text: 'Check Wallet', onPress: () => navigation.navigate('Wallet') },
+                  { text: 'Try Again', onPress: () => {} }
+                ]
+              );
+            }
+          }, 3000);
+        }
+      }
+      setAppState(nextAppState);
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+    return () => subscription?.remove();
+  }, [appState, paymentInProgress]);
 
   const handlePayment = async () => {
+    if (!user || !token) {
+      Alert.alert('Error', 'Please login to continue');
+      return;
+    }
+
     setLoading(true);
+    setPaymentInProgress(true);
     
     try {
-      // First create order from backend
-      const response = await fetch(`${config.SERVER_URL}/api/create-order`, {
+      // Create order from backend
+      const response = await fetch(`${config.API_BASE_URL}/payments/create-order`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
           amount: amount,
           playerCount: playerCount,
+          gameType: 'memory',
+          userId: user.id,
         }),
       });
 
       const orderData = await response.json();
       
       if (!orderData.success) {
-        throw new Error('Failed to create order');
+        throw new Error(orderData.message || 'Failed to create order');
       }
 
-      // Force native checkout by using minimal configuration
       const options = {
         description: `Memory Game - ${playerCount} Players`,
-        currency: config.PAYMENT_CONFIG.CURRENCY,
-        key: config.PAYMENT_CONFIG.RAZORPAY_KEY_ID,
+        currency: 'INR',
+        key: orderData.razorpayKeyId,
         amount: amount * 100, // Amount in paise
         name: 'Budzee Gaming',
-        order_id: orderData.order.id,
+        order_id: orderData.orderId,
         prefill: {
-          email: 'player@budzee.com',
-          contact: '9999999999',
-          name: 'Player'
+          email: user.email || 'player@budzee.com',
+          contact: user.phoneNumber || '9999999999',
+          name: user.name || 'Player'
         },
         theme: {
           color: '#FF6B35'
         },
-        // Disable webview and force native
-        send_sms_hash: true,
-        allow_rotation: false,
-        // Force native methods only
-        method: {
-          netbanking: true,
-          card: true,
-          upi: true,
-          wallet: true,
-          emi: false,
-          paylater: false
+        modal: {
+          ondismiss: () => {
+            console.log('Payment modal dismissed');
+            setPaymentInProgress(false);
+            setLoading(false);
+          }
+        },
+        notes: {
+          userId: user.id,
+          gameType: 'memory',
+          playerCount: playerCount
         }
       };
 
-      console.log('Opening Razorpay with native configuration:', options);
+      console.log('Opening Razorpay checkout...');
       
-      // Try our custom native module first, fallback to regular if not available
-      let data;
-      try {
-        data = await RazorpayNativeCheckout.open(options);
-        console.log('Used native checkout module');
-      } catch (nativeError) {
-        console.log('Native module not available, using fallback:', nativeError);
-        data = await RazorpayCheckout.open(options);
-      }
+      const data = await RazorpayCheckout.open(options);
       console.log('Payment Success:', data);
       
+      setPaymentInProgress(false);
+      
       // Verify payment with backend
-      const verifyResponse = await fetch(`${config.SERVER_URL}/api/verify-payment`, {
+      const verifyResponse = await fetch(`${config.API_BASE_URL}/payments/verify-payment`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
           razorpay_order_id: data.razorpay_order_id,
           razorpay_payment_id: data.razorpay_payment_id,
           razorpay_signature: data.razorpay_signature,
+          userId: user.id,
+          amount: amount,
+          gameType: 'memory',
+          playerCount: playerCount,
         }),
       });
 
       const verifyData = await verifyResponse.json();
       
       if (verifyData.success) {
+        // Add transaction to wallet context
+        await addTransaction({
+          type: 'deposit',
+          amount: amount,
+          description: `Game Entry Fee - ${playerCount} Players`,
+          paymentId: data.razorpay_payment_id,
+          status: 'completed'
+        });
+        
         setLoading(false);
-        navigation.navigate('Game', {playerCount, paymentConfirmed: true});
+        Alert.alert(
+          'Payment Successful!',
+          `₹${amount} has been added to your wallet.`,
+          [
+            { text: 'Continue to Game', onPress: () => navigation.navigate('Matchmaking', {playerCount, paymentConfirmed: true}) }
+          ]
+        );
       } else {
-        throw new Error('Payment verification failed');
+        throw new Error(verifyData.message || 'Payment verification failed');
       }
       
     } catch (error) {
+      setPaymentInProgress(false);
       setLoading(false);
-      Alert.alert('Payment Failed', error.message || 'Please try again');
+      
+      if (error.code === 'payment_cancelled') {
+        Alert.alert('Payment Cancelled', 'You cancelled the payment process.');
+      } else {
+        Alert.alert('Payment Failed', error.description || error.message || 'Please try again');
+      }
       console.log('Payment Error:', error);
     }
   };
 
-  const handleMockPayment = () => {
-    // For testing purposes
-    navigation.navigate('Game', {playerCount, paymentConfirmed: true});
+  const handleGoBack = () => {
+    if (loading || paymentInProgress) {
+      Alert.alert(
+        'Payment in Progress',
+        'Please wait for the payment to complete or cancel it first.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+    navigation.goBack();
   };
 
   return (
@@ -125,24 +197,30 @@ const PaymentScreen = ({navigation, route}) => {
         <View style={styles.gameInfo}>
           <Text style={styles.infoText}>Players: {playerCount}</Text>
           <Text style={styles.infoText}>Entry Fee: ₹{amount}</Text>
-          <Text style={styles.infoText}>Winner Prize: ₹{Math.floor(amount * playerCount * config.PAYMENT_CONFIG.WINNER_PERCENTAGE)}</Text>
+          <Text style={styles.infoText}>Winner Prize: ₹{Math.floor(amount * playerCount * (config.PAYMENT_CONFIG?.WINNER_PERCENTAGE || 0.9))}</Text>
         </View>
 
         <TouchableOpacity
-          style={[styles.payButton, loading && styles.disabledButton]}
+          style={[styles.payButton, (loading || paymentInProgress) && styles.disabledButton]}
           onPress={handlePayment}
-          disabled={loading}>
-          {loading ? (
-            <ActivityIndicator color="#FFF" size="small" />
+          disabled={loading || paymentInProgress}>
+          {loading || paymentInProgress ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator color="#FFF" size="small" />
+              <Text style={styles.loadingText}>
+                {paymentInProgress ? 'Processing Payment...' : 'Creating Order...'}
+              </Text>
+            </View>
           ) : (
             <Text style={styles.payButtonText}>Pay ₹{amount}</Text>
           )}
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.mockButton}
-          onPress={handleMockPayment}>
-          <Text style={styles.mockButtonText}>Skip Payment (Demo)</Text>
+          style={styles.backButton}
+          onPress={handleGoBack}
+          disabled={loading || paymentInProgress}>
+          <Text style={styles.backButtonText}>Go Back</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -211,20 +289,30 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#FFF',
   },
-  mockButton: {
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  loadingText: {
+    color: '#FFF',
+    fontSize: 16,
+    marginLeft: 10,
+    fontWeight: '500',
+  },
+  backButton: {
     backgroundColor: 'transparent',
     borderWidth: 2,
-    borderColor: '#666',
+    borderColor: '#FF6B35',
     borderRadius: 16,
-    paddingVertical: 16,
+    paddingVertical: 12,
     paddingHorizontal: 24,
     width: '100%',
     alignItems: 'center',
   },
-  mockButtonText: {
+  backButtonText: {
     fontSize: 18,
-    color: '#666',
-    fontWeight: '500',
+    fontWeight: 'bold',
+    color: '#FF6B35',
   },
 });
 

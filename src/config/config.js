@@ -1,26 +1,37 @@
-// FIXED Configuration for React Native App
+// Production Configuration for React Native App
 import { Platform } from 'react-native';
 
-// HARDCODED IP - Change this if your IP changes
-const SERVER_IP = '192.168.126.58';
-const SERVER_PORT = '8080';
+// Production server configuration
+const PRODUCTION_SERVER_URL = 'https://test.fivlog.space';
+const DEVELOPMENT_SERVER_IP = '192.168.126.58';
+const DEVELOPMENT_SERVER_PORT = '8080';
 
-// Simple URL selection based on platform
+// Determine if we're in production or development
+const __DEV__ = typeof __DEV__ !== 'undefined' ? __DEV__ : false;
+
+// URL selection based on environment
 let SERVER_URL;
 let API_URL;
 
-if (Platform.OS === 'android') {
-  // Android emulator
-  SERVER_URL = 'http://10.0.2.2:8080';
-  API_URL = 'http://10.0.2.2:8080/api';
-} else if (Platform.OS === 'ios') {
-  // iOS simulator
-  SERVER_URL = 'http://localhost:8080';
-  API_URL = 'http://localhost:8080/api';
+if (__DEV__) {
+  // Development mode - use local server
+  if (Platform.OS === 'android') {
+    // Android emulator
+    SERVER_URL = 'http://10.0.2.2:8080';
+    API_URL = 'http://10.0.2.2:8080/api';
+  } else if (Platform.OS === 'ios') {
+    // iOS simulator
+    SERVER_URL = 'http://localhost:8080';
+    API_URL = 'http://localhost:8080/api';
+  } else {
+    // Physical device in development
+    SERVER_URL = `http://${DEVELOPMENT_SERVER_IP}:${DEVELOPMENT_SERVER_PORT}`;
+    API_URL = `http://${DEVELOPMENT_SERVER_IP}:${DEVELOPMENT_SERVER_PORT}/api`;
+  }
 } else {
-  // Physical device or unknown platform
-  SERVER_URL = `http://${SERVER_IP}:${SERVER_PORT}`;
-  API_URL = `http://${SERVER_IP}:${SERVER_PORT}/api`;
+  // Production mode - use production server
+  SERVER_URL = PRODUCTION_SERVER_URL;
+  API_URL = `${PRODUCTION_SERVER_URL}/api`;
 }
 
 const config = {
@@ -28,14 +39,18 @@ const config = {
   SERVER_URL: SERVER_URL,
   API_BASE_URL: API_URL,
 
-  // Socket.io configuration - SIMPLIFIED
+  // Socket.io configuration - ENHANCED
   SOCKET_CONFIG: {
     transports: ['polling', 'websocket'], // Try polling first
-    timeout: 10000,
+    timeout: 20000,
     reconnection: true,
-    reconnectionAttempts: 3,
-    reconnectionDelay: 2000,
+    reconnectionAttempts: 5,
+    reconnectionDelay: 1000,
+    reconnectionDelayMax: 5000,
+    maxReconnectionAttempts: 5,
     forceNew: false,
+    upgrade: true,
+    rememberUpgrade: true,
   },
 
   // Game configuration
@@ -45,9 +60,8 @@ const config = {
     TURN_TIMEOUT: 30000,
   },
 
-  // Payment configuration
+  // Payment configuration - API key will be fetched from backend
   PAYMENT_CONFIG: {
-    RAZORPAY_KEY_ID: 'rzp_live_MCNGWPQMBHG7sC',
     CURRENCY: 'INR',
     ENTRY_FEES: {
       2: 10,
@@ -58,25 +72,28 @@ const config = {
 };
 
 // Enhanced debug logging
-console.log('🔧 FIXED Network Config:');
+console.log('🔧 Network Config:');
+console.log('Environment:', __DEV__ ? 'Development' : 'Production');
 console.log('Platform:', Platform.OS);
 console.log('Server URL:', config.SERVER_URL);
 console.log('API URL:', config.API_BASE_URL);
 console.log('Socket transports:', config.SOCKET_CONFIG.transports);
 
-// Immediate connection test
-console.log('🧪 Testing connection...');
-fetch(`${config.SERVER_URL}/health`)
-  .then(response => {
-    console.log('✅ Health check SUCCESS:', response.status);
-    return response.json();
-  })
-  .then(data => {
-    console.log('✅ Server status:', data.status);
-  })
-  .catch(error => {
-    console.log('❌ Health check FAILED:', error.message);
-    console.log('💡 Make sure backend is running on:', config.SERVER_URL);
-  });
+// Connection test (only in development)
+if (__DEV__) {
+  console.log('🧪 Testing connection...');
+  fetch(`${config.SERVER_URL}/health`)
+    .then(response => {
+      console.log('✅ Health check SUCCESS:', response.status);
+      return response.json();
+    })
+    .then(data => {
+      console.log('✅ Server status:', data.status);
+    })
+    .catch(error => {
+      console.log('❌ Health check FAILED:', error.message);
+      console.log('💡 Make sure backend is running on:', config.SERVER_URL);
+    });
+}
 
 export default config;

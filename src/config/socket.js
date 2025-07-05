@@ -1,36 +1,24 @@
 import { io } from 'socket.io-client';
+import config from './config';
 
-const SOCKET_URL = __DEV__ 
-  ? 'http://localhost:3001' 
-  : 'https://your-production-server.com';
+const SOCKET_URL = config.SERVER_URL;
 
 export const socket = io(SOCKET_URL, {
-  transports: ['websocket'],
-  autoConnect: true,
-  reconnection: true,
-  reconnectionAttempts: 5,
-  reconnectionDelay: 1000,
+  ...config.SOCKET_CONFIG,
+  autoConnect: false,
+  transports: ['polling', 'websocket'], // Use polling first for better compatibility
+  upgrade: true,
+  rememberUpgrade: true,
 });
 
-// Connection status management
-export const socketManager = {
-  isConnected: false,
-  
-  onConnect: (callback) => {
-    socket.on('connect', () => {
-      socketManager.isConnected = true;
-      callback();
-    });
-  },
-  
-  onDisconnect: (callback) => {
-    socket.on('disconnect', () => {
-      socketManager.isConnected = false;
-      callback();
-    });
-  },
-  
-  onError: (callback) => {
-    socket.on('error', callback);
-  }
-};
+socket.on('connect', () => {
+  console.log('✅ Socket connected:', socket.id);
+});
+
+socket.on('disconnect', (reason) => {
+  console.log('❌ Socket disconnected:', reason);
+});
+
+socket.on('connect_error', (error) => {
+  console.error('❌ Socket connection error:', error);
+});
