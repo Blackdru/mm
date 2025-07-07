@@ -15,6 +15,7 @@ import {
 import {useAuth} from '../context/AuthContext';
 import { theme, commonStyles } from '../styles/theme';
 import GradientBackground from '../components/GradientBackground';
+import config from '../config/config';
 
 const AuthScreen = ({navigation}) => {
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -62,13 +63,55 @@ const AuthScreen = ({navigation}) => {
       return;
     }
 
+    // First try to verify OTP to check if user exists
     setLoading(true);
     try {
-      const result = await verifyOTP(phoneNumber, otp);
+      const checkResponse = await fetch(`${config.API_BASE_URL}/auth/check-user`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ phoneNumber }),
+      });
+      
+      const checkData = await checkResponse.json();
+      setLoading(false);
+      
+      if (checkData.isNewUser) {
+        // Show consent screen for new users only
+        navigation.navigate('UserConsent', {
+          onAccept: () => {
+            navigation.navigate('ReferralCode', {
+              phoneNumber,
+              otp,
+              onComplete: (referralCode) => {
+                verifyOTPWithReferral(referralCode);
+              }
+            });
+          }
+        });
+      } else {
+        // Existing user - directly verify OTP
+        verifyOTPWithReferral(null);
+      }
+    } catch (error) {
+      setLoading(false);
+      // If check fails, proceed with normal flow
+      verifyOTPWithReferral(null);
+    }
+  };
+
+  const verifyOTPWithReferral = async (referralCode) => {
+    setLoading(true);
+    try {
+      const result = await verifyOTP(phoneNumber, otp, referralCode);
       setLoading(false);
 
       if (result.success) {
         console.log('OTP verification successful');
+        if (referralCode) {
+          Alert.alert('Success!', 'Account created successfully! You and your friend have received ₹25 bonus credits.');
+        }
       } else {
         Alert.alert('Error', result.message || 'Invalid OTP. Please try again.');
       }

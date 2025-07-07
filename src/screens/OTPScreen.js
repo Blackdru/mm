@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
+import config from '../config/config';
 
 const OTPScreen = ({ route, navigation }) => {
-  const { phoneNumber } = route.params;
+  const { phoneNumber, referralCode } = route.params;
   const [otp, setOTP] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -13,11 +14,22 @@ const OTPScreen = ({ route, navigation }) => {
     setError('');
     setLoading(true);
     try {
-      const res = await axios.post('http://localhost:3001/api/auth/verify-otp', { phoneNumber, otp });
+      const requestData = { phoneNumber, otp };
+      if (referralCode) {
+        requestData.referralCode = referralCode;
+      }
+      
+      const res = await axios.post(`${config.API_BASE_URL}/auth/verify-otp`, requestData);
       if (res.data.success && res.data.token) {
         await AsyncStorage.setItem('token', res.data.token);
         await AsyncStorage.setItem('user', JSON.stringify(res.data.user));
-        navigation.reset({ index: 0, routes: [{ name: 'HomeScreen' }] });
+        
+        // Navigate based on whether user is new or existing
+        if (res.data.isNewUser) {
+          navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
+        } else {
+          navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
+        }
       } else {
         setError(res.data.message || 'Invalid OTP');
       }

@@ -86,13 +86,18 @@ export const AuthProvider = ({children}) => {
     }
   };
 
-  const verifyOTP = async (phoneNumber, otp) => {
+  const verifyOTP = async (phoneNumber, otp, referralCode = null) => {
     try {
-      console.log('Verifying OTP for:', phoneNumber, 'OTP:', otp);
+      console.log('Verifying OTP for:', phoneNumber, 'OTP:', otp, 'Referral:', referralCode);
+      
+      const requestBody = { phoneNumber, otp };
+      if (referralCode) {
+        requestBody.referralCode = referralCode;
+      }
       
       const data = await makeApiRequest(`${config.API_BASE_URL}/auth/verify-otp`, {
         method: 'POST',
-        body: JSON.stringify({phoneNumber, otp}),
+        body: JSON.stringify(requestBody),
       });
 
       console.log('Verify OTP response:', data);
@@ -179,6 +184,22 @@ export const AuthProvider = ({children}) => {
     }
   };
 
+  const getToken = async () => {
+    try {
+      // First try to get from state
+      if (state.token) {
+        return state.token;
+      }
+      
+      // Fallback to AsyncStorage
+      const token = await AsyncStorage.getItem('authToken');
+      return token;
+    } catch (error) {
+      console.error('Get token error:', error);
+      return null;
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -188,6 +209,7 @@ export const AuthProvider = ({children}) => {
         updateProfile,
         logout,
         refreshToken,
+        getToken,
       }}>
       {children}
     </AuthContext.Provider>

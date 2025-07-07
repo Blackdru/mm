@@ -3,8 +3,11 @@ import { Platform } from 'react-native';
 
 // Production server configuration
 const PRODUCTION_SERVER_URL = 'https://test.fivlog.space';
-const DEVELOPMENT_SERVER_IP = '192.168.126.58';
+const DEVELOPMENT_SERVER_IP = 'localhost';
 const DEVELOPMENT_SERVER_PORT = '8080';
+
+// Force localhost for development (set to false when ready for production)
+const FORCE_LOCALHOST = true;
 
 // Determine if we're in production or development
 const __DEV__ = typeof __DEV__ !== 'undefined' ? __DEV__ : false;
@@ -13,10 +16,10 @@ const __DEV__ = typeof __DEV__ !== 'undefined' ? __DEV__ : false;
 let SERVER_URL;
 let API_URL;
 
-if (__DEV__) {
+if (__DEV__ || FORCE_LOCALHOST) {
   // Development mode - use local server
   if (Platform.OS === 'android') {
-    // Android emulator
+    // Android emulator - connect to localhost backend
     SERVER_URL = 'http://10.0.2.2:8080';
     API_URL = 'http://10.0.2.2:8080/api';
   } else if (Platform.OS === 'ios') {
@@ -24,9 +27,11 @@ if (__DEV__) {
     SERVER_URL = 'http://localhost:8080';
     API_URL = 'http://localhost:8080/api';
   } else {
-    // Physical device in development
-    SERVER_URL = `http://${DEVELOPMENT_SERVER_IP}:${DEVELOPMENT_SERVER_PORT}`;
-    API_URL = `http://${DEVELOPMENT_SERVER_IP}:${DEVELOPMENT_SERVER_PORT}/api`;
+    // Physical device in development - use localhost
+    // Note: For physical Android device, you may need to use your computer's IP address
+    // For example: '192.168.1.100' instead of 'localhost'
+    SERVER_URL = `http://localhost:${DEVELOPMENT_SERVER_PORT}`;
+    API_URL = `http://localhost:${DEVELOPMENT_SERVER_PORT}/api`;
   }
 } else {
   // Production mode - use production server
@@ -74,13 +79,14 @@ const config = {
 // Enhanced debug logging
 console.log('🔧 Network Config:');
 console.log('Environment:', __DEV__ ? 'Development' : 'Production');
+console.log('Force Localhost:', FORCE_LOCALHOST);
 console.log('Platform:', Platform.OS);
 console.log('Server URL:', config.SERVER_URL);
 console.log('API URL:', config.API_BASE_URL);
 console.log('Socket transports:', config.SOCKET_CONFIG.transports);
 
-// Connection test (only in development)
-if (__DEV__) {
+// Connection test (only in development or when forced to localhost)
+if (__DEV__ || FORCE_LOCALHOST) {
   console.log('🧪 Testing connection...');
   fetch(`${config.SERVER_URL}/health`)
     .then(response => {
@@ -93,6 +99,7 @@ if (__DEV__) {
     .catch(error => {
       console.log('❌ Health check FAILED:', error.message);
       console.log('💡 Make sure backend is running on:', config.SERVER_URL);
+      console.log('💡 If using physical device, you may need to use your computer\'s IP address instead of localhost');
     });
 }
 

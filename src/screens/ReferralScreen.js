@@ -8,28 +8,69 @@ import {
   Share,
   Clipboard,
   SafeAreaView,
+  ActivityIndicator,
 } from 'react-native';
 import {useAuth} from '../context/AuthContext';
 import { theme, commonStyles } from '../styles/theme';
 import GradientBackground from '../components/GradientBackground';
 import CommonHeader from '../components/CommonHeader';
+import config from '../config/config';
 
 const ReferralScreen = ({navigation}) => {
-  const {user} = useAuth();
+  const {user, token} = useAuth();
   const [referralCode, setReferralCode] = useState('');
   const [referralStats, setReferralStats] = useState({
     totalReferrals: 0,
     totalEarnings: 0,
     pendingEarnings: 0,
   });
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Generate referral code based on user phone or ID
-    const code = user?.phoneNumber ? 
-      `BUDZ${user.phoneNumber.slice(-4)}${Math.random().toString(36).substr(2, 4).toUpperCase()}` :
-      `BUDZ${Math.random().toString(36).substr(2, 8).toUpperCase()}`;
-    setReferralCode(code);
+    fetchReferralData();
   }, [user]);
+
+  const fetchReferralData = async () => {
+    try {
+      setLoading(true);
+
+      if (!token) {
+        setLoading(false);
+        return;
+      }
+
+      const response = await fetch(`${config.API_BASE_URL}/profile/referral`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setReferralCode(data.referralCode || '');
+        setReferralStats({
+          totalReferrals: data.stats?.totalReferrals || 0,
+          totalEarnings: data.stats?.totalEarnings || 0,
+          pendingEarnings: data.stats?.pendingEarnings || 0,
+        });
+      } else {
+        console.error('Failed to fetch referral data:', data.message);
+        // Fallback for existing users without referral codes
+        if (user?.referralCode) {
+          setReferralCode(user.referralCode);
+        }
+      }
+    } catch (error) {
+      console.error('Fetch referral data error:', error);
+      // Fallback for existing users without referral codes
+      if (user?.referralCode) {
+        setReferralCode(user.referralCode);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleCopyCode = async () => {
     try {
@@ -46,8 +87,8 @@ const ReferralScreen = ({navigation}) => {
 
 Use my referral code: ${referralCode}
 
-💰 You get ₹50 bonus on signup
-🎁 I get ₹25 when you play your first game
+💰 You get ₹25 bonus on signup
+🎁 I get ₹25 when you join
 
 Download now: https://budzee.app/download
 
@@ -107,19 +148,25 @@ Download now: https://budzee.app/download
             </View>
             
             <View style={styles.codeDisplay}>
-              <Text style={styles.codeText}>{referralCode}</Text>
+              {loading ? (
+                <ActivityIndicator color={theme.colors.primary} size="large" />
+              ) : (
+                <Text style={styles.codeText}>{referralCode || 'Loading...'}</Text>
+              )}
             </View>
             
             <View style={styles.codeActions}>
               <TouchableOpacity
-                style={[styles.codeButton, styles.copyButton]}
-                onPress={handleCopyCode}>
+                style={[styles.codeButton, styles.copyButton, loading && styles.buttonDisabled]}
+                onPress={handleCopyCode}
+                disabled={loading || !referralCode}>
                 <Text style={styles.copyButtonText}>📋 Copy Code</Text>
               </TouchableOpacity>
               
               <TouchableOpacity
-                style={[styles.codeButton, styles.shareButton]}
-                onPress={handleShareCode}>
+                style={[styles.codeButton, styles.shareButton, loading && styles.buttonDisabled]}
+                onPress={handleShareCode}
+                disabled={loading || !referralCode}>
                 <Text style={styles.shareButtonText}>📤 Share Now</Text>
               </TouchableOpacity>
             </View>
@@ -280,6 +327,9 @@ const styles = StyleSheet.create({
     color: theme.colors.textPrimary,
     fontSize: theme.fonts.sizes.md,
     fontWeight: '600',
+  },
+  buttonDisabled: {
+    opacity: 0.5,
   },
   
   statsSection: {

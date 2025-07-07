@@ -20,6 +20,8 @@ import CommonHeader from '../components/CommonHeader';
 const WalletScreen = ({navigation}) => {
   const {
     balance,
+    gameBalance,
+    withdrawableBalance,
     transactions,
     fetchBalance,
     fetchTransactions,
@@ -126,8 +128,8 @@ const WalletScreen = ({navigation}) => {
       Alert.alert('Error', 'Minimum withdrawal amount is ₹100');
       return;
     }
-    if (amountNum > balance) {
-      Alert.alert('Error', 'Insufficient balance');
+    if (amountNum > withdrawableBalance) {
+      Alert.alert('Error', `Insufficient withdrawable balance. You can only withdraw winnings (₹${(withdrawableBalance || 0).toFixed(2)} available). Referral bonuses and deposits can only be used for playing games.`);
       return;
     }
 
@@ -270,8 +272,38 @@ const WalletScreen = ({navigation}) => {
                 <Text style={styles.balanceIcon}>💎</Text>
               </View>
               <View style={styles.balanceInfo}>
-                <Text style={styles.balanceLabel}>Available Balance</Text>
-                <Text style={styles.balanceAmount}>₹{(balance || 0).toFixed(2)}</Text>
+                <Text style={styles.balanceLabel}>Total Balance</Text>
+                <Text style={styles.balanceAmount}>₹{(Number(balance) || 0).toFixed(2)}</Text>
+                <View style={styles.balanceBreakdown}>
+                  <Text style={styles.balanceSubtext}>
+                    Game: ₹{(Number(gameBalance) || 0).toFixed(2)} • Withdrawable: ₹{(Number(withdrawableBalance) || 0).toFixed(2)}
+                  </Text>
+                </View>
+              </View>
+            </View>
+            
+            {/* Enhanced Balance Breakdown */}
+            <View style={styles.balanceDetailsSection}>
+              <View style={styles.balanceDetailCard}>
+                <View style={styles.balanceDetailHeader}>
+                  <Text style={styles.balanceDetailIcon}>🎮</Text>
+                  <Text style={styles.balanceDetailTitle}>Game Balance</Text>
+                </View>
+                <Text style={styles.balanceDetailAmount}>₹{(Number(gameBalance) || 0).toFixed(2)}</Text>
+                <Text style={styles.balanceDetailDescription}>
+                  Money for playing games (deposits + referral bonuses)
+                </Text>
+              </View>
+              
+              <View style={styles.balanceDetailCard}>
+                <View style={styles.balanceDetailHeader}>
+                  <Text style={styles.balanceDetailIcon}>💰</Text>
+                  <Text style={styles.balanceDetailTitle}>Withdraw Balance</Text>
+                </View>
+                <Text style={[styles.balanceDetailAmount, styles.withdrawableAmount]}>₹{(Number(withdrawableBalance) || 0).toFixed(2)}</Text>
+                <Text style={styles.balanceDetailDescription}>
+                  Winnings that can be withdrawn to your bank account
+                </Text>
               </View>
             </View>
             
@@ -398,7 +430,8 @@ const WalletScreen = ({navigation}) => {
             <View style={styles.modalContainer}>
               <Text style={styles.modalTitle}>💰 Withdraw Money</Text>
               
-              <Text style={styles.modalLabel}>Available: ₹{(balance || 0).toFixed(2)}</Text>
+              <Text style={styles.modalLabel}>Withdrawable: ₹{(withdrawableBalance || 0).toFixed(2)}</Text>
+              <Text style={styles.modalNote}>Only winnings can be withdrawn. Game balance (deposits + referral bonuses) can only be used for playing.</Text>
               <TextInput
                 style={styles.modalInput}
                 placeholder="Enter amount (Min ₹100)"
@@ -608,6 +641,14 @@ const styles = StyleSheet.create({
     color: theme.colors.textSuccess,
     marginTop: 2,
   },
+  balanceBreakdown: {
+    marginTop: theme.spacing.xs,
+  },
+  balanceSubtext: {
+    fontSize: theme.fonts.sizes.sm,
+    color: theme.colors.textSecondary,
+    fontWeight: '500',
+  },
   actionButtons: {
     flexDirection: 'row',
     gap: theme.spacing.md,
@@ -765,6 +806,13 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
     marginBottom: theme.spacing.sm,
   },
+  modalNote: {
+    fontSize: theme.fonts.sizes.sm,
+    color: theme.colors.warning,
+    marginBottom: theme.spacing.md,
+    fontStyle: 'italic',
+    textAlign: 'center',
+  },
   modalInput: {
     backgroundColor: theme.colors.backgroundInput,
     borderRadius: theme.borderRadius.lg,
@@ -896,6 +944,49 @@ const styles = StyleSheet.create({
     fontSize: theme.fonts.sizes.sm,
     color: theme.colors.textSecondary,
     fontWeight: '600',
+  },
+  
+  // Enhanced Balance Details Styles
+  balanceDetailsSection: {
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+    marginTop: theme.spacing.lg,
+  },
+  balanceDetailCard: {
+    flex: 1,
+    backgroundColor: theme.colors.backgroundLight,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.md,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  balanceDetailHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: theme.spacing.sm,
+  },
+  balanceDetailIcon: {
+    fontSize: 16,
+    marginRight: theme.spacing.sm,
+  },
+  balanceDetailTitle: {
+    fontSize: theme.fonts.sizes.sm,
+    fontWeight: '600',
+    color: theme.colors.textPrimary,
+  },
+  balanceDetailAmount: {
+    fontSize: theme.fonts.sizes.lg,
+    fontWeight: 'bold',
+    color: theme.colors.primary,
+    marginBottom: theme.spacing.sm,
+  },
+  withdrawableAmount: {
+    color: theme.colors.success,
+  },
+  balanceDetailDescription: {
+    fontSize: theme.fonts.sizes.xs,
+    color: theme.colors.textSecondary,
+    lineHeight: 14,
   },
 });
 

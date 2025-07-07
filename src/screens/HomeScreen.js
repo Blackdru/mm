@@ -19,18 +19,27 @@ const { width } = Dimensions.get('window');
 
 const HomeScreen = ({navigation}) => {
   const {user, logout} = useAuth();
-  const {balance, transactions, fetchBalance, fetchTransactions} = useWallet();
+  const {balance, gameBalance, withdrawableBalance, transactions, fetchBalance, fetchTransactions} = useWallet();
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    fetchBalance();
-    fetchTransactions();
-  }, []);
+  const loadData = async () => {
+    await fetchBalance();
+    await fetchTransactions(); // Always fetch, or remove this if you load elsewhere
+  };
+  loadData();
+}, []);
 
   const onRefresh = async () => {
     setRefreshing(true);
     await fetchBalance();
-    await fetchTransactions();
+    await fetchTransactions()
+    // Try to fetch transactions, but don't fail if it errors
+    try {
+      await fetchTransactions();
+    } catch (error) {
+      console.log('Transactions fetch failed during refresh, continuing...');
+    }
     setRefreshing(false);
   };
 
@@ -123,14 +132,30 @@ const HomeScreen = ({navigation}) => {
                 <Text style={styles.walletIcon}>💎</Text>
               </View>
               <View style={styles.walletInfo}>
-                <Text style={styles.walletLabel}>Gaming Wallet</Text>
-                <Text style={styles.walletAmount}>₹{(balance || 0).toFixed(2)}</Text>
+                <Text style={styles.walletLabel}>Total Balance</Text>
+                <Text style={styles.walletAmount}>₹{(Number(balance) || 0).toFixed(2)}</Text>
               </View>
               <TouchableOpacity
                 style={styles.addMoneyButton}
                 onPress={() => navigation.navigate('Wallet')}>
-                <Text style={styles.addMoneyText}>Open Wallet</Text>
+                <Text style={styles.addMoneyText}>Add Money</Text>
               </TouchableOpacity>
+            </View>
+            
+            <View style={styles.walletBalances}>
+              <View style={styles.balanceItem}>
+                <Text style={styles.balanceValue}>₹{(Number(gameBalance) || 0).toFixed(2)}</Text>
+                <Text style={styles.balanceLabel}>Game Balance</Text>
+                <Text style={styles.balanceHint}>For playing games only</Text>
+                <Text style={styles.balanceNote}>Deposits + Referral</Text>
+              </View>
+              <View style={styles.balanceDivider} />
+              <View style={styles.balanceItem}>
+                <Text style={[styles.balanceValue, styles.withdrawableValue]}>₹{(Number(withdrawableBalance) || 0).toFixed(2)}</Text>
+                <Text style={styles.balanceLabel}>Winnings</Text>
+                <Text style={styles.balanceHint}>Can withdraw</Text>
+                <Text style={styles.balanceNote}>Game winnings only</Text>
+              </View>
             </View>
             
             <View style={styles.walletStats}>
@@ -394,6 +419,53 @@ const styles = StyleSheet.create({
     color: theme.colors.textPrimary,
     fontSize: theme.fonts.sizes.sm,
     fontWeight: '600',
+  },
+  
+  walletBalances: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    paddingVertical: theme.spacing.md,
+    marginVertical: theme.spacing.sm,
+    backgroundColor: theme.colors.backgroundLight,
+    borderRadius: theme.borderRadius.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  balanceItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  balanceValue: {
+    fontSize: theme.fonts.sizes.md,
+    fontWeight: 'bold',
+    color: theme.colors.primary,
+  },
+  withdrawableValue: {
+    color: theme.colors.success,
+  },
+  balanceLabel: {
+    fontSize: theme.fonts.sizes.xs,
+    color: theme.colors.textSecondary,
+    marginTop: theme.spacing.xs,
+    fontWeight: '600',
+  },
+  balanceHint: {
+    fontSize: theme.fonts.sizes.xs,
+    color: theme.colors.textTertiary,
+    marginTop: 2,
+  },
+  balanceNote: {
+    fontSize: theme.fonts.sizes.xs,
+    color: theme.colors.textSecondary,
+    marginTop: 1,
+    fontStyle: 'italic',
+    opacity: 0.8,
+  },
+  balanceDivider: {
+    width: 1,
+    height: 40,
+    backgroundColor: theme.colors.border,
   },
   
   walletStats: {

@@ -5,6 +5,8 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 // Screens
 import AuthScreen from './src/screens/AuthScreen';
+import UserConsentScreen from './src/screens/UserConsentScreen';
+import ReferralCodeScreen from './src/screens/ReferralCodeScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import PlayerSelectionScreen from './src/screens/PlayerSelectionScreen';
 import AmountSelectionScreen from './src/screens/AmountSelectionScreen';
@@ -79,6 +81,10 @@ const AppNavigator = () => {
     switch (currentScreen) {
       case 'Auth':
         return <AuthScreen navigation={{navigate, goBack}} />;
+      case 'UserConsent':
+        return <UserConsentScreen navigation={{navigate, goBack}} route={{params: screenParams}} />;
+      case 'ReferralCode':
+        return <ReferralCodeScreen navigation={{navigate, goBack}} route={{params: screenParams}} />;
       case 'Home':
         return <HomeScreen navigation={{navigate, goBack}} />;
       case 'PlayerSelection':

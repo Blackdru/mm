@@ -6,6 +6,8 @@ const WalletContext = createContext();
 
 const initialState = {
   balance: 0,
+  gameBalance: 0,
+  withdrawableBalance: 0,
   transactions: [],
   loading: false,
   razorpayKey: null,
@@ -16,7 +18,12 @@ const walletReducer = (state, action) => {
     case 'SET_LOADING':
       return { ...state, loading: action.payload };
     case 'SET_BALANCE':
-      return { ...state, balance: action.payload };
+      return {
+        ...state,
+        balance: action.payload.balance || 0,
+        gameBalance: action.payload.gameBalance || 0,
+        withdrawableBalance: action.payload.withdrawableBalance || 0,
+      };
     case 'SET_TRANSACTIONS':
       return { ...state, transactions: action.payload };
     case 'ADD_TRANSACTION':
@@ -41,6 +48,8 @@ export const WalletProvider = ({ children }) => {
     if (isAuthenticated && token) {
       fetchBalance();
       fetchRazorpayKey();
+      // Don't auto-fetch transactions to avoid 404 errors
+      // fetchTransactions will be called manually when needed
     }
   }, [isAuthenticated, token]);
 
@@ -56,13 +65,22 @@ export const WalletProvider = ({ children }) => {
 
       const data = await response.json();
       if (response.ok && data.success) {
-        dispatch({ type: 'SET_BALANCE', payload: parseFloat(data.balance) || 0 });
+        console.log('Wallet API data:', data);
+        const walletData = data.wallet || data;
+        dispatch({
+          type: 'SET_BALANCE',
+          payload: {
+            balance: Number(walletData.balance) || 0,
+            gameBalance: Number(walletData.gameBalance) || 0,
+            withdrawableBalance: Number(walletData.withdrawableBalance) || 0,
+          },
+        });
       } else {
-        dispatch({ type: 'SET_BALANCE', payload: 0 });
+        dispatch({ type: 'SET_BALANCE', payload: { balance: 0, gameBalance: 0, withdrawableBalance: 0 } });
       }
     } catch (error) {
       console.error('Fetch balance error:', error);
-      dispatch({ type: 'SET_BALANCE', payload: 0 });
+      dispatch({ type: 'SET_BALANCE', payload: { balance: 0, gameBalance: 0, withdrawableBalance: 0 } });
     }
   };
 
@@ -151,7 +169,14 @@ export const WalletProvider = ({ children }) => {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        dispatch({ type: 'SET_BALANCE', payload: data.balance });
+        dispatch({
+          type: 'SET_BALANCE',
+          payload: {
+            balance: data.balance || 0,
+            gameBalance: data.gameBalance || 0,
+            withdrawableBalance: data.withdrawableBalance || 0,
+          },
+        });
         fetchTransactions();
       }
 
@@ -244,7 +269,8 @@ export const WalletProvider = ({ children }) => {
         verifyDeposit,
         createWithdrawal,
         addTransaction,
-      }}>
+      }}
+    >
       {children}
     </WalletContext.Provider>
   );

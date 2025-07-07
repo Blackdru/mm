@@ -182,14 +182,14 @@ const MemoryGameScreen = ({ route, navigation }) => {
     }
   };
 
-  // Simple grid layout for 30 cards (5 columns x 6 rows)
+  // Improved grid layout for 30 cards (5 columns x 6 rows) with better spacing
   const getCardGridPosition = (index) => {
     const cols = 5;
     const rows = 6;
-    const containerWidth = width - 25; // Reduced from 50 to 40
-    const cardSpacing = 15; // Reduced spacing
+    const containerWidth = width - 40; // More padding for better appearance
+    const cardSpacing = 8; // Optimized spacing
     const cardWidth = (containerWidth - (cardSpacing * (cols + 1))) / cols;
-    const cardHeight = cardWidth * 0.9; // Slightly rectangular for better fit
+    const cardHeight = cardWidth * 1.1; // Slightly taller for better proportions
     
     const row = Math.floor(index / cols);
     const col = index % cols;
@@ -411,7 +411,7 @@ const MemoryGameScreen = ({ route, navigation }) => {
 
   const handleCardsMatched = (data) => {
     console.log('Cards matched:', data);
-    const { positions, playerId: matchingPlayer, scores } = data;
+    const { positions, playerId: matchingPlayer, newScore, matchedPairs } = data;
     
     // Update matched cards
     setMatchedCards(prev => [...prev, ...positions]);
@@ -423,9 +423,12 @@ const MemoryGameScreen = ({ route, navigation }) => {
       )
     );
 
-    // Update scores if provided
-    if (scores) {
-      setScores(scores);
+    // Update score for the matching player
+    if (matchingPlayer && newScore !== undefined) {
+      setScores(prev => ({
+        ...prev,
+        [matchingPlayer]: newScore
+      }));
     }
 
     // Clear flipped cards
@@ -679,7 +682,21 @@ const MemoryGameScreen = ({ route, navigation }) => {
 
   const handleError = (data) => {
     console.error('Memory game error:', data);
-    Alert.alert('Error', data.message);
+    
+    // Handle specific error codes
+    if (data.code === 'CARD_SELECTION_FAILED') {
+      // Revert optimistic UI updates for card selection errors
+      if (data.position !== undefined) {
+        setSelectedCards(prev => prev.filter(pos => pos !== data.position));
+        setGameBoard(prev => prev.map((card, idx) => 
+          idx === data.position ? { ...card, isFlipped: false } : card
+        ));
+      }
+      setIsProcessingCard(false);
+    }
+    
+    // Show user-friendly error message
+    Alert.alert('Game Error', data.message || 'An error occurred during the game.');
   };
 
   const handlePlayerJoined = (data) => {
@@ -754,8 +771,8 @@ const MemoryGameScreen = ({ route, navigation }) => {
   const handleCardPress = (position) => {
     const now = Date.now();
     
-    // Debounce rapid clicks (300ms minimum between clicks)
-    if (now - lastCardPressTime.current < 300) {
+    // Enhanced debouncing - 500ms minimum between clicks
+    if (now - lastCardPressTime.current < 500) {
       console.log('Card press too rapid, ignoring');
       return;
     }
@@ -772,11 +789,15 @@ const MemoryGameScreen = ({ route, navigation }) => {
     // Check connection status
     if (connectionStatus !== 'connected') {
       console.log('Not connected to server');
+      Alert.alert('Connection Error', 'Not connected to server. Please check your internet connection.');
       return;
     }
     
     if (!isMyTurn || gameStatus !== 'playing') {
       console.log('Not your turn or game not playing');
+      if (gameStatus === 'playing' && !isMyTurn) {
+        Alert.alert('Wait Your Turn', 'Please wait for your turn to play.');
+      }
       return;
     }
     
@@ -814,14 +835,15 @@ const MemoryGameScreen = ({ route, navigation }) => {
         position,
       });
       setLastActivity(Date.now());
-      // Reset processing state after a short delay
-      setTimeout(() => setIsProcessingCard(false), 500);
+      // Reset processing state after a longer delay to prevent rapid selections
+      setTimeout(() => setIsProcessingCard(false), 1000);
     } else {
       console.log('Socket not connected, cannot select card');
       // Revert optimistic update
       setSelectedCards(prev => prev.filter(p => p !== position));
       setGameBoard(prev => prev.map((card, idx) => idx === position ? { ...card, isFlipped: false } : card));
       setIsProcessingCard(false);
+      Alert.alert('Connection Error', 'Lost connection to server. Please try again.');
     }
   };
 
@@ -1147,7 +1169,9 @@ const MemoryGameScreen = ({ route, navigation }) => {
             
             {gameResults.reason && (
               <View style={styles.gameReasonContainer}>
-                <Text style={styles.gameReasonText}>{gameResults.reason}</Text>
+                <Text style={styles.gameReasonText}>
+                  📋 {gameResults.reason}
+                </Text>
               </View>
             )}
             
@@ -1221,7 +1245,7 @@ const MemoryGameScreen = ({ route, navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0a0a0a',
+    backgroundColor: '#1a1a2e',
     paddingHorizontal: 8,
     paddingVertical: 4,
   },
@@ -1258,27 +1282,27 @@ const styles = StyleSheet.create({
   },
   scoreCard: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#2d3748',
     borderRadius: 12,
-    paddingVertical: 8,
-    paddingHorizontal: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#333333',
-    shadowColor: '#ff6b35',
+    borderColor: '#4a5568',
+    shadowColor: '#00d4ff',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.2,
     shadowRadius: 4,
-    elevation: 3,
+    elevation: 4,
   },
   myScoreCard: {
-    backgroundColor: '#2a1a0f',
-    borderColor: '#ff6b35',
+    backgroundColor: '#2b6cb0',
+    borderColor: '#00d4ff',
     borderWidth: 2,
-    shadowColor: '#ff6b35',
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 6,
+    shadowColor: '#00d4ff',
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 8,
   },
   eliminatedCard: {
     backgroundColor: '#2a1a1a',
@@ -1332,26 +1356,27 @@ const styles = StyleSheet.create({
   },
   turnContainer: {
     alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    backgroundColor: '#1a1a2e',
-    borderRadius: 15,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    backgroundColor: '#2d3748',
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#3a3f5f',
+    borderColor: '#4a5568',
     shadowColor: '#00d4ff',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 5,
   },
   myTurnContainer: {
-    backgroundColor: '#1e3a5f',
+    backgroundColor: '#2b6cb0',
     borderColor: '#00d4ff',
-    borderWidth: 2,
+    borderWidth: 3,
     shadowColor: '#00d4ff',
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 8,
+    shadowOpacity: 0.6,
+    shadowRadius: 12,
+    elevation: 10,
+    transform: [{ scale: 1.02 }],
   },
   turnText: {
     fontSize: 14,
@@ -1407,9 +1432,9 @@ const styles = StyleSheet.create({
     width: width - 40,
     height: (() => {
       const containerWidth = width - 40;
-      const cardSpacing = 4;
+      const cardSpacing = 8;
       const cardWidth = (containerWidth - (cardSpacing * 6)) / 5; // 5 cols, 6 spacings
-      const cardHeight = cardWidth * 0.9;
+      const cardHeight = cardWidth * 1.1;
       return cardSpacing * 7 + cardHeight * 6; // 6 rows, 7 spacings
     })(),
     alignSelf: 'center',
@@ -1418,15 +1443,15 @@ const styles = StyleSheet.create({
   },
   gridCard: {
     position: 'absolute',
-    borderRadius: 8,
-    backgroundColor: '#1a1a2e',
-    elevation: 4,
+    borderRadius: 12,
+    backgroundColor: '#2d3748',
+    elevation: 6,
     shadowColor: '#00d4ff',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    borderWidth: 1,
-    borderColor: '#3a3f5f',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    borderWidth: 2,
+    borderColor: '#4a5568',
   },
   boardContainer: {
     alignItems: 'center',
@@ -1457,13 +1482,14 @@ const styles = StyleSheet.create({
     borderWidth: 0,
   },
   selectedCard: {
-    borderWidth: 2,
+    borderWidth: 3,
     borderColor: '#00d4ff',
-    transform: [{ scale: 1.1 }],
+    backgroundColor: '#3182ce',
+    transform: [{ scale: 1.05 }],
     shadowColor: '#00d4ff',
-    shadowOpacity: 0.8,
-    shadowRadius: 12,
-    elevation: 15,
+    shadowOpacity: 1.0,
+    shadowRadius: 15,
+    elevation: 20,
   },
   cardInner: {
     flex: 1,
@@ -1473,25 +1499,28 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 16,
-    backgroundColor: '#1a1a2e',
+    borderRadius: 12,
+    backgroundColor: '#2d3748',
   },
   cardFlipped: {
-    backgroundColor: '#1e3a5f',
+    backgroundColor: '#3182ce',
     borderColor: '#00d4ff',
   },
   cardSymbol: {
-    fontSize: 18, // Further reduced for better fit
-    color: '#a8b2d1',
+    fontSize: 20,
+    color: '#e2e8f0',
     fontWeight: 'bold',
+    textShadowColor: 'rgba(226, 232, 240, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   cardSymbolFlipped: {
-    color: '#00d4ff',
-    fontSize: 20, // Further reduced for better fit
+    color: '#ffffff',
+    fontSize: 24,
     fontWeight: 'bold',
-    textShadowColor: 'rgba(0, 212, 255, 0.3)',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 4,
+    textShadowColor: 'rgba(0, 212, 255, 0.5)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 6,
   },
   prizePoolContainer: {
     backgroundColor: '#1a1a2e',
@@ -1729,17 +1758,22 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   gameReasonContainer: {
-    backgroundColor: '#ff9800',
-    borderRadius: 10,
-    padding: 10,
+    backgroundColor: '#3182ce',
+    borderRadius: 12,
+    padding: 12,
     marginBottom: 15,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#00d4ff',
   },
   gameReasonText: {
-    color: '#fff',
-    fontSize: 14,
+    color: '#ffffff',
+    fontSize: 15,
     fontWeight: 'bold',
     textAlign: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   notification: {
     position: 'absolute',

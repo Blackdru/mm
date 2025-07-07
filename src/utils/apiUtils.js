@@ -17,6 +17,21 @@ export const handleApiError = (error) => {
     };
   }
   
+  // Handle specific referral code errors
+  if (error.message && error.message.includes('referral code format')) {
+    return {
+      success: false,
+      message: 'Invalid referral code format. Please enter a code starting with BZ followed by 4-10 characters (e.g., BZ1234).'
+    };
+  }
+  
+  if (error.message && error.message.includes('Invalid OTP')) {
+    return {
+      success: false,
+      message: 'Invalid or expired OTP. Please request a new OTP and try again.'
+    };
+  }
+  
   return {
     success: false,
     message: error.message || 'Something went wrong. Please try again.'
