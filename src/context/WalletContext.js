@@ -94,7 +94,7 @@ export const WalletProvider = ({ children }) => {
       }
 
       const response = await fetch(
-        `${config.API_BASE_URL}/payment/history?page=${page}&limit=${limit}`,
+        `${config.API_BASE_URL}/wallet/transactions?page=${page}&limit=${limit}`,
         {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -130,7 +130,7 @@ export const WalletProvider = ({ children }) => {
 
   const createDepositOrder = async (amount) => {
     try {
-      const response = await fetch(`${config.API_BASE_URL}/payment/create-deposit-order`, {
+      const response = await fetch(`${config.API_BASE_URL}/wallet/deposit`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -157,7 +157,7 @@ export const WalletProvider = ({ children }) => {
 
   const verifyDeposit = async (paymentData) => {
     try {
-      const response = await fetch(`${config.API_BASE_URL}/payment/verify-deposit`, {
+      const response = await fetch(`${config.API_BASE_URL}/wallet/deposit/verify`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -200,7 +200,7 @@ export const WalletProvider = ({ children }) => {
         return { success: false, message: 'Withdrawal details are required' };
       }
 
-      const response = await fetch(`${config.API_BASE_URL}/payment/create-withdrawal`, {
+      const response = await fetch(`${config.API_BASE_URL}/wallet/withdraw`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -208,7 +208,7 @@ export const WalletProvider = ({ children }) => {
         },
         body: JSON.stringify({
           amount: numericAmount,
-          bankDetails: withdrawalDetails,
+          withdrawalDetails: withdrawalDetails,
         }),
       });
 

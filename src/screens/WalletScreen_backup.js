@@ -135,11 +135,11 @@ const WalletScreen = ({navigation}) => {
     setLoading(true);
     try {
       const details = withdrawDetails[withdrawMethod];
-      const withdrawalDetailsData = {
+      const withdrawalData = {
         method: withdrawMethod,
         details: details,
       };
-      const result = await createWithdrawal(amountNum, withdrawalDetailsData);
+      const result = await createWithdrawal(amountNum, withdrawalData);
       
       if (result.success) {
         setShowWithdrawModal(false);
@@ -273,6 +273,11 @@ const WalletScreen = ({navigation}) => {
               <View style={styles.balanceInfo}>
                 <Text style={styles.balanceLabel}>Total Balance</Text>
                 <Text style={styles.balanceAmount}>₹{(Number(balance) || 0).toFixed(2)}</Text>
+                <View style={styles.balanceBreakdown}>
+                  <Text style={styles.balanceSubtext}>
+                    Game: ₹{(Number(gameBalance) || 0).toFixed(2)} • Withdrawable: ₹{(Number(withdrawableBalance) || 0).toFixed(2)}
+                  </Text>
+                </View>
               </View>
             </View>
             
@@ -532,6 +537,7 @@ const WalletScreen = ({navigation}) => {
                 </View>
               )}
               
+                            
               <Text style={styles.withdrawNote}>
                 • Min withdrawal: ₹100 • Processing: 1-2 days • No charges
               </Text>
@@ -625,7 +631,6 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing.md,
     borderRadius: theme.borderRadius.lg,
     alignItems: 'center',
-     marginTop: 10,
     ...theme.shadows.small,
   },
   addButton: {

@@ -32,14 +32,14 @@ const SettingsScreen = ({ navigation }) => {
       title: 'Privacy Policy',
       subtitle: 'How we protect your data',
       icon: '🔒',
-      onPress: () => handleOpenLink('https://budzee.com/privacy'),
+      onPress: () => handleOpenLink('https://klikgames.in/privacy'),
     },
     {
       id: 'terms',
       title: 'Terms & Conditions',
       subtitle: 'Rules and regulations',
       icon: '📋',
-      onPress: () => handleOpenLink('https://budzee.com/terms'),
+      onPress: () => handleOpenLink('https://klikgames.in/terms'),
     },
     {
       id: 'faq',
@@ -60,7 +60,7 @@ const SettingsScreen = ({ navigation }) => {
       title: 'Customer Support',
       subtitle: 'Get help and support',
       icon: '🎧',
-      onPress: () => handleContactSupport(),
+      onPress: () => handleOpenLink('https://klikgames.in/contact'),
     },
     {
       id: 'feedback',
@@ -345,10 +345,10 @@ const SettingsScreen = ({ navigation }) => {
           {/* Footer */}
           <View style={styles.footer}>
             <Text style={styles.footerText}>
-              Made with ❤️ for gaming enthusiasts
+              Budrock Technologies Private Limited
             </Text>
             <Text style={styles.footerSubtext}>
-              © 2024 Budzee Gaming. All rights reserved.
+              © 2024 Budzee. All rights reserved.
             </Text>
           </View>
         </ScrollView>

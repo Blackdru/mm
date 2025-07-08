@@ -23,7 +23,7 @@ const FAQScreen = ({ navigation }) => {
     {
       id: 2,
       question: 'How do withdrawals work?',
-      answer: 'You can withdraw your winnings to your bank account, UPI ID, or crypto wallet. Minimum withdrawal is ₹100 and processing takes 1-3 business days.',
+      answer: 'You can withdraw your winnings to your bank account or UPI ID. Minimum withdrawal is ₹100 and processing takes 1-3 business days.',
     },
     {
       id: 3,

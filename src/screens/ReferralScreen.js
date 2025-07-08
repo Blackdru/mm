@@ -90,7 +90,7 @@ Use my referral code: ${referralCode}
 💰 You get ₹25 bonus on signup
 🎁 I get ₹25 when you join
 
-Download now: https://budzee.app/download
+Download now: https://klikgames.in
 
 #BudzeeGaming #RealMoney #Gaming`;
 
@@ -107,8 +107,8 @@ Download now: https://budzee.app/download
     {
       icon: '🎁',
       title: 'Sign Up Bonus',
-      description: 'Friend gets ₹50 on registration',
-      amount: '₹50',
+      description: 'Friend gets ₹25 on registration',
+      amount: '₹25',
       color: theme.colors.success,
     },
     {
@@ -240,7 +240,7 @@ Download now: https://budzee.app/download
               <View style={styles.stepNumber}>
                 <Text style={styles.stepNumberText}>3</Text>
               </View>
-              <Text style={styles.stepText}>Both of you earn instant rewards!</Text>
+              <Text style={styles.stepText}>Earn instant rewards!</Text>
             </View>
           </View>
         </View>

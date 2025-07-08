@@ -32,7 +32,7 @@ const AboutScreen = ({ navigation }) => {
     {
       icon: '⚡',
       title: 'Instant Payouts',
-      description: 'Quick and hassle-free withdrawals to your bank account, UPI, or crypto wallet.',
+      description: 'Quick and hassle-free withdrawals to your bank account or UPI.',
     },
     {
       icon: '🎮',
