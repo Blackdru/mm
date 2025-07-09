@@ -7,7 +7,7 @@ const DEVELOPMENT_SERVER_IP = 'localhost';
 const DEVELOPMENT_SERVER_PORT = '8080';
 
 // Force localhost for development (set to false when ready for production)
-const FORCE_LOCALHOST = true;
+const FORCE_LOCALHOST = false;
 
 // Determine if we're in production or development
 const __DEV__ = typeof __DEV__ !== 'undefined' ? __DEV__ : false;
