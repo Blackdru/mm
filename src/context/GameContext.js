@@ -1,4 +1,4 @@
-import React, {createContext, useContext, useReducer, useEffect} from 'react';
+import React, {createContext, useContext, useReducer, useEffect, useRef} from 'react';
 import { socket } from '../config/socket';
 import { useAuth } from './AuthContext';
 
@@ -97,6 +97,10 @@ const gameReducer = (state, action) => {
 export const GameProvider = ({children}) => {
   const [state, dispatch] = useReducer(gameReducer, initialState);
   const {token, isAuthenticated, user} = useAuth();
+  
+  // Add refs for debouncing and preventing duplicate calls
+  const lastJoinAttempt = useRef(0);
+  const isJoiningMatchmaking = useRef(false);
 
   const initializeSocket = () => {
     if (socket.connected) {
@@ -121,11 +125,15 @@ export const GameProvider = ({children}) => {
     function onDisconnect(reason) {
       console.log('Socket disconnected:', reason);
       dispatch({ type: 'SET_CONNECTION_STATUS', payload: 'disconnected' });
+      // Reset joining flag on disconnect
+      isJoiningMatchmaking.current = false;
     }
 
     function onConnectError(error) {
       console.error('Socket connection error:', error);
       dispatch({ type: 'SET_CONNECTION_STATUS', payload: 'disconnected' });
+      // Reset joining flag on error
+      isJoiningMatchmaking.current = false;
     }
 
     socket.on('connect', onConnect);
@@ -151,12 +159,19 @@ export const GameProvider = ({children}) => {
     const onMatchmakingStatus = (data) => {
       console.log('🔍 Matchmaking status:', data);
       dispatch({type: 'SET_MATCHMAKING_STATUS', payload: data.status});
+      
+      // Reset joining flag when status changes
+      if (data.status === 'waiting' || data.status === 'found' || data.status === 'error') {
+        isJoiningMatchmaking.current = false;
+      }
     };
 
     const onMatchmakingError = (data) => {
       console.error('❌ Matchmaking error:', data);
       dispatch({type: 'SET_MATCHMAKING_STATUS', payload: 'error'});
       dispatch({type: 'SET_ERROR', payload: data.message});
+      // Reset joining flag on error
+      isJoiningMatchmaking.current = false;
     };
 
     const onMatchFound = (data) => {
@@ -170,6 +185,8 @@ export const GameProvider = ({children}) => {
       if (data.players) {
         dispatch({type: 'UPDATE_PLAYERS', payload: data.players});
       }
+      // Reset joining flag when match found
+      isJoiningMatchmaking.current = false;
     };
 
     const onGameRoomJoined = (data) => {
@@ -212,16 +229,49 @@ export const GameProvider = ({children}) => {
   }, []);
 
   const joinMatchmaking = (gameType, maxPlayers, entryFee) => {
+    const now = Date.now();
+    
+    // Prevent rapid successive calls (2 second debounce)
+    if (now - lastJoinAttempt.current < 2000) {
+      console.log('🔄 Debouncing matchmaking join attempt - too soon');
+      return;
+    }
+    
+    // Prevent concurrent join attempts
+    if (isJoiningMatchmaking.current) {
+      console.log('🔄 Matchmaking join already in progress');
+      return;
+    }
+    
+    // Check if already searching or found
+    if (state.matchmakingStatus === 'searching' || state.matchmakingStatus === 'found') {
+      console.log('🔄 Already in matchmaking process:', state.matchmakingStatus);
+      return;
+    }
+    
     if (state.socket && state.connectionStatus === 'connected') {
+      lastJoinAttempt.current = now;
+      isJoiningMatchmaking.current = true;
+      
+      console.log('🎯 Joining matchmaking:', { gameType, maxPlayers, entryFee });
+      
       dispatch({type: 'SET_MATCHMAKING_STATUS', payload: 'searching'});
       dispatch({type: 'CLEAR_ERROR'});
+      
       state.socket.emit('joinMatchmaking', {
         gameType,
         maxPlayers,
         entryFee
       });
+      
+      // Reset joining flag after a delay as fallback
+      setTimeout(() => {
+        isJoiningMatchmaking.current = false;
+      }, 5000);
+      
     } else {
       console.log('❌ Cannot join matchmaking - socket not connected');
+      isJoiningMatchmaking.current = false;
     }
   };
 
@@ -230,6 +280,8 @@ export const GameProvider = ({children}) => {
       state.socket.emit('leaveMatchmaking');
       dispatch({type: 'SET_MATCHMAKING_STATUS', payload: 'idle'});
     }
+    // Reset joining flag when leaving
+    isJoiningMatchmaking.current = false;
   };
 
   const joinGameRoom = (gameId) => {
@@ -264,6 +316,8 @@ export const GameProvider = ({children}) => {
 
   const resetGame = () => {
     dispatch({type: 'RESET_GAME'});
+    // Reset joining flag when resetting game
+    isJoiningMatchmaking.current = false;
   };
 
   const clearError = () => {
@@ -284,6 +338,8 @@ export const GameProvider = ({children}) => {
       state.socket.emit('leaveMatchmaking');
     }
     dispatch({type: 'FORCE_RESET_TO_IDLE'});
+    // Reset joining flag when force resetting
+    isJoiningMatchmaking.current = false;
   };
 
   const cleanupAfterGameEnd = () => {
@@ -291,6 +347,8 @@ export const GameProvider = ({children}) => {
       state.socket.emit('leaveMatchmaking');
     }
     dispatch({type: 'FORCE_RESET_TO_IDLE'});
+    // Reset joining flag after game end
+    isJoiningMatchmaking.current = false;
   };
 
   const resetToIdle = () => {
@@ -298,6 +356,8 @@ export const GameProvider = ({children}) => {
       state.socket.emit('leaveMatchmaking');
     }
     dispatch({type: 'FORCE_RESET_TO_IDLE'});
+    // Reset joining flag when resetting to idle
+    isJoiningMatchmaking.current = false;
   };
 
   return (

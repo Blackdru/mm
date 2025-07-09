@@ -130,17 +130,39 @@ export const WalletProvider = ({ children }) => {
 
   const createDepositOrder = async (amount) => {
     try {
+      console.log('Creating deposit order for amount:', amount);
+      console.log('API URL:', `${config.API_BASE_URL}/wallet/deposit`);
+      console.log('Token available:', !!token);
+
+      if (!token) {
+        throw new Error('Authentication token not available');
+      }
+
+      if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) < 10) {
+        throw new Error('Valid amount is required. Minimum deposit is ₹10');
+      }
+
       const response = await fetch(`${config.API_BASE_URL}/wallet/deposit`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({ amount }),
+        body: JSON.stringify({ amount: parseFloat(amount) }),
       });
 
+      console.log('Deposit order response status:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Deposit order error response:', errorText);
+        throw new Error(`Server error: ${response.status} - ${errorText}`);
+      }
+
       const data = await response.json();
-      if (response.ok && data.success) {
+      console.log('Deposit order response data:', data);
+
+      if (data.success && data.order) {
         return {
           success: true,
           orderId: data.order.id,
@@ -151,7 +173,10 @@ export const WalletProvider = ({ children }) => {
       }
     } catch (error) {
       console.error('Create deposit order error:', error);
-      return { success: false, message: error.message };
+      return { 
+        success: false, 
+        message: error.message || 'Network error. Please check your connection and try again.' 
+      };
     }
   };
 

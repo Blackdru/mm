@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import RazorpayCheckout from 'react-native-razorpay';
 import {useWallet} from '../context/WalletContext';
+import {useAuth} from '../context/AuthContext';
 import { theme, commonStyles } from '../styles/theme';
 import GradientBackground from '../components/GradientBackground';
 import CommonHeader from '../components/CommonHeader';
@@ -30,6 +31,8 @@ const WalletScreen = ({navigation}) => {
     createWithdrawal,
     razorpayKey,
   } = useWallet();
+
+  const { user } = useAuth();
 
   const [showAddMoneyModal, setShowAddMoneyModal] = useState(false);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
@@ -59,32 +62,55 @@ const WalletScreen = ({navigation}) => {
       return;
     }
 
+    if (!razorpayKey) {
+      Alert.alert('Error', 'Payment gateway not configured. Please try again later.');
+      return;
+    }
+
     setLoading(true);
     try {
+      console.log('Starting deposit process for amount:', amountNum);
+      
       // First create the order
       const result = await createDepositOrder(amountNum);
+      console.log('Create deposit order result:', result);
       
-      if (result.success) {
+      if (result.success && result.order) {
+        // Prepare user details for prefill with fallbacks
+        const userEmail = user?.email || 'user@budzee.com';
+        const userContact = user?.phoneNumber || '9999999999';
+        const userName = user?.name || 'User';
+
+        console.log('User details for prefill:', {
+          email: userEmail,
+          contact: userContact,
+          name: userName,
+          userObject: user
+        });
+
         // Open Razorpay payment gateway
         const options = {
           description: 'Wallet Deposit',
           image: 'https://your-logo-url.com/logo.png', // Add your logo URL
           currency: 'INR',
-          key: razorpayKey || 'rzp_live_C2grRiZzvpoi4i', // Use from context or fallback
+          key: razorpayKey, // Always use the key from backend
           amount: amountNum * 100, // Amount in paise
           name: 'Budzee Gaming',
           order_id: result.order.id,
           prefill: {
-            email: 'user@budzee.com',
-            contact: '9999999999',
-            name: 'User'
+            email: userEmail,
+            contact: userContact,
+            name: userName
           },
           theme: {
             color: theme.colors.primary
           }
         };
 
-        console.log('Opening Razorpay with options:', options);
+        console.log('Opening Razorpay with options:', {
+          ...options,
+          key: razorpayKey ? 'SET' : 'NOT_SET'
+        });
         
         const paymentResult = await RazorpayCheckout.open(options);
         console.log('Payment success:', paymentResult);
@@ -97,6 +123,8 @@ const WalletScreen = ({navigation}) => {
           amount: amountNum
         });
         
+        console.log('Verify deposit result:', verifyResult);
+        
         if (verifyResult.success) {
           setShowAddMoneyModal(false);
           setAmount('');
@@ -104,17 +132,20 @@ const WalletScreen = ({navigation}) => {
           fetchBalance();
           fetchTransactions();
         } else {
-          Alert.alert('Error', 'Payment verification failed');
+          Alert.alert('Error', verifyResult.message || 'Payment verification failed');
         }
       } else {
-        Alert.alert('Error', result.message || 'Failed to create deposit order');
+        console.error('Failed to create deposit order:', result);
+        Alert.alert('Error', result.message || 'Failed to create deposit order. Please try again.');
       }
     } catch (error) {
-      console.log('Payment error:', error);
+      console.error('Payment error:', error);
       if (error.code === 'PAYMENT_CANCELLED') {
         Alert.alert('Payment Cancelled', 'You cancelled the payment');
+      } else if (error.message && error.message.includes('network')) {
+        Alert.alert('Network Error', 'Please check your internet connection and try again.');
       } else {
-        Alert.alert('Error', 'Payment failed. Please try again.');
+        Alert.alert('Error', error.message || 'Payment failed. Please try again.');
       }
     } finally {
       setLoading(false);

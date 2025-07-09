@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useRef} from 'react';
 import {
   View,
   Text,
@@ -41,23 +41,36 @@ const MatchmakingScreen = ({navigation, route}) => {
   const [countdown, setCountdown] = useState(null);
   const [showMatchFoundModal, setShowMatchFoundModal] = useState(false);
   const [pulseAnim] = useState(new Animated.Value(1));
+  
+  // Add state to prevent multiple matchmaking attempts
+  const [hasStartedMatchmaking, setHasStartedMatchmaking] = useState(false);
+  const [isJoining, setIsJoining] = useState(false);
+  const hasInitialized = useRef(false);
 
   useEffect(() => {
-    resetToIdle();
+    // Only reset once when component mounts
+    if (!hasInitialized.current) {
+      resetToIdle();
+      hasInitialized.current = true;
+    }
   }, []);
 
   useEffect(() => {
-    if (connectionStatus === 'connected') {
-      if (matchmakingStatus === 'idle') {
-        setTimeout(() => {
-          startMatchmaking();
-        }, 100);
-      } else {
-        resetToIdle();
-        setTimeout(() => {
-          startMatchmaking();
-        }, 500);
-      }
+    // Only start matchmaking once when connected and not already started
+    if (connectionStatus === 'connected' && 
+        !hasStartedMatchmaking && 
+        !isJoining && 
+        matchmakingStatus === 'idle') {
+      
+      console.log('🎯 Starting matchmaking process...');
+      setIsJoining(true);
+      
+      // Small delay to ensure connection is stable
+      setTimeout(() => {
+        startMatchmaking();
+        setHasStartedMatchmaking(true);
+        setIsJoining(false);
+      }, 500);
     }
     
     const timerCleanup = startWaitTimer();
@@ -72,7 +85,7 @@ const MatchmakingScreen = ({navigation, route}) => {
       }
       backHandler.remove();
     };
-  }, [connectionStatus]);
+  }, [connectionStatus, hasStartedMatchmaking, isJoining, matchmakingStatus]);
 
   useEffect(() => {
     if (matchmakingStatus === 'found' && gameId) {
@@ -123,6 +136,18 @@ const MatchmakingScreen = ({navigation, route}) => {
   };
 
   const startMatchmaking = () => {
+    // Prevent multiple calls
+    if (hasStartedMatchmaking || isJoining) {
+      console.log('🔄 Matchmaking already started or in progress');
+      return;
+    }
+    
+    console.log('🚀 Initiating matchmaking for:', { 
+      gameType: 'MEMORY', 
+      playerCount, 
+      entryFee 
+    });
+    
     const gameType = 'MEMORY';
     joinMatchmaking(gameType, playerCount, entryFee);
   };
@@ -207,7 +232,7 @@ const MatchmakingScreen = ({navigation, route}) => {
     
     switch (matchmakingStatus) {
       case 'idle':
-        return 'Preparing for battle...';
+        return isJoining ? 'Preparing for battle...' : 'Ready to start...';
       case 'searching':
         return 'Searching for worthy opponents...';
       case 'found':
@@ -253,7 +278,7 @@ const MatchmakingScreen = ({navigation, route}) => {
             {getStatusMessage()}
           </Text>
           
-          {(matchmakingStatus === 'searching' || connectionStatus === 'connecting') && (
+          {(matchmakingStatus === 'searching' || connectionStatus === 'connecting' || isJoining) && (
             <ActivityIndicator
               size="large"
               color={getStatusColor()}
@@ -292,7 +317,7 @@ const MatchmakingScreen = ({navigation, route}) => {
           <View style={styles.tipsCard}>
             <Text style={styles.tipsTitle}>💡 While You Wait</Text>
             <Text style={styles.tipsText}>
-              Keep app open • Entry fee deducted • Refund if no match in 5 min
+              Keep app open • Entry fee deducted once • Refund if no match in 2 min
             </Text>
           </View>
         </View>
@@ -301,7 +326,8 @@ const MatchmakingScreen = ({navigation, route}) => {
         <View style={styles.buttonSection}>
           <TouchableOpacity
             style={styles.cancelButton}
-            onPress={handleBackPress}>
+            onPress={handleBackPress}
+            disabled={isJoining}>
             <Text style={styles.cancelButtonText}>
               🚫 Cancel & Get Refund
             </Text>

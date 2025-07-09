@@ -16,9 +16,25 @@ const { width, height } = Dimensions.get('window');
 
 // Card symbols/images for the memory game - 15 unique symbols for 30 cards (15 pairs)
 const CARD_SYMBOLS = [
-  '🎮', '🎯', '🎲', '🃏', '🎨', '🎭', '🎪',
-  '⚽', '🏀', '🏓', '🏸', '🏎️', '🚒', '🎾', '🏈'
+  '🐉', // dragon
+  '🚀', // rocket
+  '🍩', // donut
+  '🎧', // headphones
+  '🧊', // ice cube
+  '🧬', // DNA
+  '🦾', // robot arm
+  '🦉', // owl
+  '⚡', // lightning
+  '🧨', // firecracker
+  '🪄', // magic wand
+  '🎸', // guitar
+  '🧿', // nazar (evil eye)
+  '🪙', // coin
+  '🔮'  // crystal ball
 ];
+
+// Brain icon for card backs
+const BRAIN_ICON = '🧠';
 
 const MemoryGameScreen = ({ route, navigation }) => {
   const { roomId, playerId, playerName, socket } = route.params;
@@ -186,10 +202,10 @@ const MemoryGameScreen = ({ route, navigation }) => {
   const getCardGridPosition = (index) => {
     const cols = 5;
     const rows = 6;
-    const containerWidth = width - 40; // More padding for better appearance
-    const cardSpacing = 8; // Optimized spacing
+    const containerWidth = width - 24; // Reduced padding to match container
+    const cardSpacing = 5; // Reduced spacing for better fit
     const cardWidth = (containerWidth - (cardSpacing * (cols + 1))) / cols;
-    const cardHeight = cardWidth * 1.1; // Slightly taller for better proportions
+    const cardHeight = cardWidth; // Square cards for better fit
     
     const row = Math.floor(index / cols);
     const col = index % cols;
@@ -993,7 +1009,7 @@ const MemoryGameScreen = ({ route, navigation }) => {
               styles.cardSymbol,
               isFlipped && styles.cardSymbolFlipped
             ]}>
-              {isFlipped ? card.symbol : '?'}
+              {isFlipped ? card.symbol : BRAIN_ICON}
             </Text>
           </View>
         </Animated.View>
@@ -1038,7 +1054,7 @@ const MemoryGameScreen = ({ route, navigation }) => {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
+      {/* Compact Header */}
       <View style={styles.header}>
         <Text style={styles.title}>🧠 Mind Morga</Text>
         
@@ -1063,7 +1079,7 @@ const MemoryGameScreen = ({ route, navigation }) => {
               const playerScore = scores[player.id] || 0;
               const playerLifelines = lifelines[player.id] || 3;
               const isMe = player.id === playerId;
-              const displayName = isMe ? 'You' : (player.name || player.playerName || `Player ${index + 1}`);
+              const displayName = isMe ? 'You' : (player.name || player.playerName || `P${index + 1}`);
               
               return (
                 <View key={player.id} style={[
@@ -1105,7 +1121,7 @@ const MemoryGameScreen = ({ route, navigation }) => {
         </View>
       </View>
 
-      {/* Turn Indicator - Fixed Height Container */}
+      {/* Compact Turn Indicator */}
       <View style={styles.turnIndicatorContainer}>
         <View style={[
           styles.turnContainer,
@@ -1118,7 +1134,7 @@ const MemoryGameScreen = ({ route, navigation }) => {
             {isMyTurn ? "🎯 YOUR TURN!" : `${getCurrentPlayerName()}'s Turn`}
           </Text>
           
-          {/* Turn Timer - Always reserve space */}
+          {/* Turn Timer */}
           <View style={styles.turnTimerContainer}>
             {turnTimeRemaining > 0 ? (
               <Text style={[
@@ -1141,13 +1157,13 @@ const MemoryGameScreen = ({ route, navigation }) => {
         </View>
       </View>
 
-      {/* Game Controls */}
+      {/* Compact Game Controls */}
       <View style={styles.controls}>
         <TouchableOpacity
           style={styles.controlButton}
           onPress={handleLeaveGame}
         >
-          <Text style={styles.controlButtonText}>🚪 Leave Game</Text>
+          <Text style={styles.controlButtonText}>🚪 Leave</Text>
         </TouchableOpacity>
       </View>
 
@@ -1245,95 +1261,123 @@ const MemoryGameScreen = ({ route, navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a2e',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    backgroundColor: '#0A0A0F',
+    paddingHorizontal: 10,
+    paddingTop: 8,
+    paddingBottom: 6,
   },
   header: {
     alignItems: 'center',
-    marginBottom: 8,
-    paddingTop: 8,
-    paddingHorizontal: 4,
+    marginBottom: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#ff6b35',
-    marginBottom: 4,
-    textShadowColor: 'rgba(255, 107, 53, 0.4)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 10,
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#00D4FF',
+    marginBottom: 2,
     textAlign: 'center',
+    letterSpacing: 0.8,
   },
   subtitle: {
-    fontSize: 12,
-    color: '#a8b2d1',
-    marginBottom: 8,
+    fontSize: 10,
+    color: '#A0A0B0',
+    marginBottom: 6,
     textAlign: 'center',
     fontWeight: '500',
+    letterSpacing: 0.3,
   },
+  
+  // Prize pool - compact design
+  prizePoolContainer: {
+    backgroundColor: 'rgba(255, 215, 0, 0.1)',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    marginBottom: 6,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 215, 0, 0.3)',
+    alignSelf: 'center',
+  },
+  prizePoolLabel: {
+    fontSize: 8,
+    fontWeight: '600',
+    color: '#FFD700',
+    marginBottom: 1,
+    letterSpacing: 0.3,
+  },
+  prizePoolAmount: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#FFD700',
+    letterSpacing: 0.8,
+  },
+  
+  // Score cards - compact layout
   scoreContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    width: '100%',
-    paddingHorizontal: 4,
-    gap: 8,
     marginBottom: 6,
+    paddingHorizontal: 2,
+    gap: 8,
   },
   scoreCard: {
     flex: 1,
-    backgroundColor: '#2d3748',
-    borderRadius: 12,
-    paddingVertical: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderRadius: 10,
+    paddingVertical: 6,
     paddingHorizontal: 8,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#4a5568',
-    shadowColor: '#00d4ff',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    minHeight: 45,
+    justifyContent: 'center',
   },
   myScoreCard: {
-    backgroundColor: '#2b6cb0',
-    borderColor: '#00d4ff',
-    borderWidth: 2,
-    shadowColor: '#00d4ff',
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 8,
+    backgroundColor: 'rgba(0, 212, 255, 0.12)',
+    borderColor: '#00D4FF',
+    borderWidth: 1.5,
+    transform: [{ scale: 1.01 }],
   },
   eliminatedCard: {
-    backgroundColor: '#2a1a1a',
-    borderColor: '#ff6b6b',
+    backgroundColor: 'rgba(255, 107, 107, 0.06)',
+    borderColor: 'rgba(255, 107, 107, 0.3)',
     borderWidth: 1,
-    opacity: 0.6,
+    opacity: 0.7,
   },
   scorePlayerName: {
-    fontSize: 10,
-    fontWeight: 'bold',
-    color: '#ccd6f6',
+    fontSize: 8,
+    fontWeight: '600',
+    color: '#E0E0E8',
     marginBottom: 2,
+    letterSpacing: 0.2,
+    textAlign: 'center',
   },
   myScorePlayerName: {
-    color: '#ff6b35',
+    color: '#00D4FF',
+    fontWeight: '700',
   },
   scoreText: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#ffaa00',
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 0.3,
+    textAlign: 'center',
   },
   myScoreText: {
-    color: '#ff6b35',
-    textShadowColor: 'rgba(255, 107, 53, 0.3)',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 4,
+    color: '#00D4FF',
+    fontSize: 12,
   },
   lifelinesContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 4,
+    marginTop: 3,
     justifyContent: 'center',
     gap: 2,
   },
@@ -1341,85 +1385,79 @@ const styles = StyleSheet.create({
     fontSize: 10,
   },
   activeHeart: {
-    color: '#ff6b6b',
+    color: '#FF6B6B',
     opacity: 1,
   },
   inactiveHeart: {
-    color: '#666',
-    opacity: 0.3,
+    color: '#555',
+    opacity: 0.2,
   },
+  
+  // Turn indicator - compact spacing
   turnIndicatorContainer: {
-    height: 50,
-    justifyContent: 'center',
     marginBottom: 6,
     paddingHorizontal: 4,
   },
   turnContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
+    justifyContent: 'space-between',
+    paddingVertical: 8,
     paddingHorizontal: 16,
-    backgroundColor: '#2d3748',
-    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#4a5568',
-    shadowColor: '#00d4ff',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 5,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   myTurnContainer: {
-    backgroundColor: '#2b6cb0',
-    borderColor: '#00d4ff',
-    borderWidth: 3,
-    shadowColor: '#00d4ff',
-    shadowOpacity: 0.6,
-    shadowRadius: 12,
-    elevation: 10,
-    transform: [{ scale: 1.02 }],
+    backgroundColor: 'rgba(0, 212, 255, 0.15)',
+    borderColor: '#00D4FF',
+    borderWidth: 1.5,
+    transform: [{ scale: 1.01 }],
   },
   turnText: {
-    fontSize: 14,
-    color: '#ccd6f6',
-    fontWeight: 'bold',
-    marginBottom: 4,
+    fontSize: 12,
+    color: '#E0E0E8',
+    fontWeight: '600',
+    letterSpacing: 0.3,
+    flex: 1,
   },
   myTurnText: {
-    color: '#00d4ff',
-    fontSize: 14,
-    fontWeight: 'bold',
-    textShadowColor: 'rgba(0, 212, 255, 0.4)',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 6,
+    color: '#00D4FF',
+    fontSize: 13,
+    fontWeight: '700',
   },
   turnTimerContainer: {
-    height: 24,
     justifyContent: 'center',
-    paddingHorizontal: 10,
+    alignItems: 'center',
+    paddingHorizontal: 8,
     paddingVertical: 4,
-    backgroundColor: '#16213e',
-    borderRadius: 12,
-    minWidth: 60,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 10,
+    minWidth: 50,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
   },
   turnTimerText: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#64ffda',
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#00FF88',
     textAlign: 'center',
+    letterSpacing: 0.3,
   },
   turnTimerPlaceholder: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#8892b0',
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#808090',
     textAlign: 'center',
   },
   urgentTimer: {
-    color: '#ff6b6b',
-    fontSize: 16,
-    textShadowColor: '#ff6b6b',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 5,
+    color: '#FF6B6B',
+    fontSize: 11,
+    fontWeight: '700',
   },
+  
+  // Game board - optimized dimensions
   gameBoard: {
     flex: 1,
     justifyContent: 'center',
@@ -1428,378 +1466,335 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   gridContainer: {
-    position: 'relative',
-    width: width - 40,
+    width: width - 24,
     height: (() => {
-      const containerWidth = width - 40;
-      const cardSpacing = 8;
-      const cardWidth = (containerWidth - (cardSpacing * 6)) / 5; // 5 cols, 6 spacings
-      const cardHeight = cardWidth * 1.1;
-      return cardSpacing * 7 + cardHeight * 6; // 6 rows, 7 spacings
+      const containerWidth = width - 24;
+      const cardSpacing = 5;
+      const cardWidth = (containerWidth - (cardSpacing * 6)) / 5;
+      const cardHeight = cardWidth;
+      return cardSpacing * 7 + cardHeight * 6;
     })(),
     alignSelf: 'center',
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    padding: 6,
   },
   gridCard: {
     position: 'absolute',
-    borderRadius: 12,
-    backgroundColor: '#2d3748',
-    elevation: 6,
-    shadowColor: '#00d4ff',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    borderWidth: 2,
-    borderColor: '#4a5568',
-  },
-  boardContainer: {
-    alignItems: 'center',
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
     justifyContent: 'center',
-  },
-  card: {
-    width: (width - 80) / 4 - 8,
-    height: (width - 80) / 4 - 8,
-    margin: 4,
-    borderRadius: 15,
-    backgroundColor: '#1a1a2e',
-    elevation: 8,
-    shadowColor: '#00d4ff',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    borderWidth: 2,
-    borderColor: '#16213e',
+    alignItems: 'center',
   },
   disabledCard: {
-    opacity: 0.5,
-    shadowOpacity: 0.1,
+    opacity: 0.4,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
   },
   invisibleCard: {
     backgroundColor: 'transparent',
-    elevation: 0,
-    shadowOpacity: 0,
     borderWidth: 0,
   },
   selectedCard: {
-    borderWidth: 3,
-    borderColor: '#00d4ff',
-    backgroundColor: '#3182ce',
+    borderWidth: 2,
+    borderColor: '#00D4FF',
+    backgroundColor: 'rgba(0, 212, 255, 0.15)',
     transform: [{ scale: 1.05 }],
-    shadowColor: '#00d4ff',
-    shadowOpacity: 1.0,
-    shadowRadius: 15,
-    elevation: 20,
   },
   cardInner: {
     flex: 1,
-    borderRadius: 16,
+    width: '100%',
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   cardFront: {
     flex: 1,
+    width: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 12,
-    backgroundColor: '#2d3748',
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
   },
   cardFlipped: {
-    backgroundColor: '#3182ce',
-    borderColor: '#00d4ff',
+    backgroundColor: 'rgba(0, 212, 255, 0.2)',
+    borderColor: '#00D4FF',
+    borderWidth: 2,
   },
   cardSymbol: {
-    fontSize: 20,
-    color: '#e2e8f0',
-    fontWeight: 'bold',
-    textShadowColor: 'rgba(226, 232, 240, 0.3)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
+    fontSize: 22,
+    color: '#E0E0E8',
+    fontWeight: '600',
   },
   cardSymbolFlipped: {
-    color: '#ffffff',
+    color: '#00D4FF',
     fontSize: 24,
-    fontWeight: 'bold',
-    textShadowColor: 'rgba(0, 212, 255, 0.5)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 6,
+    fontWeight: '700',
   },
-  prizePoolContainer: {
-    backgroundColor: '#1a1a2e',
-    borderRadius: 15,
-    paddingHorizontal: 15,
-    paddingVertical: 10,
-    marginBottom: 10,
+  
+  // Controls - compact positioning
+  controls: {
+    paddingHorizontal: 8,
+    paddingVertical: 8,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#00d4ff',
-    shadowColor: '#00d4ff',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 4,
   },
-  prizePoolLabel: {
+  controlButton: {
+    backgroundColor: 'rgba(255, 107, 107, 0.15)',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 16,
+    minWidth: 100,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 107, 107, 0.4)',
+  },
+  controlButtonText: {
+    color: '#FF6B6B',
+    fontWeight: '700',
     fontSize: 12,
-    fontWeight: 'bold',
-    color: '#00d4ff',
+    letterSpacing: 0.5,
   },
-  prizePoolAmount: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#00d4ff',
-    textShadowColor: 'rgba(0, 212, 255, 0.3)',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 4,
-  },
+  
+  // Leaderboard modal - improved layout
   leaderboardOverlay: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    backgroundColor: 'rgba(0, 0, 0, 0.95)',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 1000,
+    paddingHorizontal: 20,
+    paddingVertical: 40,
   },
   leaderboardModal: {
-    backgroundColor: '#1a1a2e',
-    borderRadius: 20,
-    padding: 20,
-    width: width * 0.9,
-    maxHeight: height * 0.8,
+    backgroundColor: 'rgba(10, 10, 15, 0.98)',
+    borderRadius: 24,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+    maxHeight: '90%',
     borderWidth: 2,
-    borderColor: '#00d4ff',
-    shadowColor: '#00d4ff',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 10,
+    borderColor: 'rgba(0, 212, 255, 0.3)',
   },
   leaderboardTitle: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#00d4ff',
+    fontWeight: '800',
+    color: '#00D4FF',
     textAlign: 'center',
-    marginBottom: 20,
-    textShadowColor: 'rgba(0, 212, 255, 0.3)',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 6,
+    marginBottom: 16,
+    letterSpacing: 1,
   },
   prizePoolDisplay: {
-    backgroundColor: '#1e3a5f',
-    borderRadius: 10,
-    padding: 15,
-    marginBottom: 20,
+    backgroundColor: 'rgba(255, 215, 0, 0.1)',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#00d4ff',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 215, 0, 0.3)',
   },
   prizePoolDisplayText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#00d4ff',
-    textShadowColor: 'rgba(0, 212, 255, 0.3)',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 4,
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFD700',
+    letterSpacing: 0.5,
   },
   leaderboardList: {
-    marginBottom: 20,
+    marginBottom: 16,
   },
   leaderboardItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#16213e',
-    borderRadius: 10,
-    padding: 15,
-    marginBottom: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 8,
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   winnerItem: {
-    backgroundColor: '#1e3a5f',
-    borderColor: '#00d4ff',
+    backgroundColor: 'rgba(0, 212, 255, 0.1)',
+    borderColor: '#00D4FF',
     borderWidth: 2,
-    shadowColor: '#00d4ff',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 5,
+    transform: [{ scale: 1.02 }],
   },
   rankContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    width: 60,
+    width: 50,
   },
   rankText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#ccd6f6',
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#E0E0E8',
+    letterSpacing: 0.5,
   },
   crownIcon: {
-    fontSize: 20,
-    marginLeft: 5,
+    fontSize: 16,
+    marginLeft: 4,
   },
   playerInfo: {
     flex: 1,
-    marginLeft: 15,
+    marginLeft: 12,
   },
   playerNameText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#ccd6f6',
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#E0E0E8',
+    letterSpacing: 0.3,
   },
   winnerText: {
-    color: '#00d4ff',
-    textShadowColor: 'rgba(0, 212, 255, 0.3)',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 4,
+    color: '#00D4FF',
+    fontWeight: '700',
   },
   playerScoreText: {
-    fontSize: 14,
-    color: '#8892b0',
+    fontSize: 12,
+    color: '#A0A0B0',
     marginTop: 2,
+    fontWeight: '500',
   },
   playerLifelinesText: {
-    fontSize: 12,
-    color: '#00d4ff',
+    fontSize: 10,
+    color: '#FFD700',
     marginTop: 2,
+    fontWeight: '500',
   },
   winAmountContainer: {
     alignItems: 'flex-end',
   },
   winAmountText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#8892b0',
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
   },
   winnerAmountText: {
-    color: '#00d4ff',
-    fontSize: 18,
-    textShadowColor: 'rgba(0, 212, 255, 0.3)',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 4,
+    color: '#00D4FF',
+    fontSize: 16,
+    fontWeight: '700',
   },
+  
+  // Timer components
   timerContainer: {
     alignItems: 'center',
-    padding: 20,
+    padding: 16,
   },
   timerText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#00d4ff',
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFD700',
     marginBottom: 10,
     textAlign: 'center',
+    letterSpacing: 0.5,
   },
   timerBar: {
     width: '100%',
     height: 6,
-    backgroundColor: '#16213e',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderRadius: 3,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   timerProgress: {
     height: '100%',
-    backgroundColor: '#00d4ff',
+    backgroundColor: '#00D4FF',
     borderRadius: 3,
   },
+  
+  // Waiting screen
   waitingText: {
-    fontSize: 20,
-    color: '#ccd6f6',
+    fontSize: 16,
+    color: '#E0E0E8',
     textAlign: 'center',
-    marginBottom: 30,
+    marginBottom: 16,
+    fontWeight: '500',
+    letterSpacing: 0.5,
   },
   startButton: {
-    backgroundColor: '#00d4ff',
-    paddingHorizontal: 30,
-    paddingVertical: 15,
-    borderRadius: 25,
+    backgroundColor: '#00D4FF',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: 'rgba(0, 212, 255, 0.3)',
   },
   startButtonText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#0f0f23',
-  },
-  controls: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: 8,
-    paddingBottom: 8,
-    paddingHorizontal: 8,
-  },
-  controlButton: {
-    backgroundColor: '#ff6b6b',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
-    shadowColor: '#ff6b6b',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 4,
-    minWidth: 100,
-    alignItems: 'center',
-  },
-  controlButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
     fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
   },
+  
+  // Status indicators
   connectionStatus: {
-    backgroundColor: '#ff6b6b',
+    backgroundColor: 'rgba(255, 107, 107, 0.9)',
     borderRadius: 10,
     paddingHorizontal: 10,
-    paddingVertical: 5,
-    marginBottom: 10,
+    paddingVertical: 4,
+    marginBottom: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 107, 107, 0.3)',
+    alignSelf: 'center',
   },
   connectionStatusText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: 'bold',
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '600',
     textAlign: 'center',
+    letterSpacing: 0.3,
   },
   gameReasonContainer: {
-    backgroundColor: '#3182ce',
+    backgroundColor: 'rgba(0, 212, 255, 0.15)',
     borderRadius: 12,
     padding: 12,
-    marginBottom: 15,
+    marginBottom: 12,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#00d4ff',
+    borderColor: 'rgba(0, 212, 255, 0.3)',
   },
   gameReasonText: {
-    color: '#ffffff',
-    fontSize: 15,
-    fontWeight: 'bold',
+    color: '#00D4FF',
+    fontSize: 14,
+    fontWeight: '600',
     textAlign: 'center',
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
+    letterSpacing: 0.3,
   },
+  
+  // Notifications
   notification: {
     position: 'absolute',
-    top: 80,
-    left: 15,
-    right: 15,
-    padding: 12,
+    top: 60,
+    left: 12,
+    right: 12,
+    padding: 8,
     borderRadius: 8,
     zIndex: 999,
-    elevation: 10,
   },
   eliminationNotification: {
-    backgroundColor: '#ff6b6b',
-    borderColor: '#ff4757',
+    backgroundColor: 'rgba(255, 107, 107, 0.95)',
+    borderColor: 'rgba(255, 107, 107, 0.3)',
     borderWidth: 1,
   },
   lifelineNotification: {
-    backgroundColor: '#ffa502',
-    borderColor: '#ff9500',
+    backgroundColor: 'rgba(255, 165, 2, 0.95)',
+    borderColor: 'rgba(255, 165, 2, 0.3)',
     borderWidth: 1,
   },
   notificationText: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: 'bold',
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '600',
     textAlign: 'center',
+    letterSpacing: 0.3,
   },
 });
 
