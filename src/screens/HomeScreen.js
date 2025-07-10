@@ -107,7 +107,10 @@ const HomeScreen = ({navigation}) => {
           {/* Attractive Header */}
           <View style={styles.header}>
             <View style={styles.userSection}>
-              <View style={styles.userInfo}>
+              <TouchableOpacity 
+                style={styles.userInfo}
+                onPress={() => navigation.navigate('Profile')}
+                activeOpacity={0.7}>
                 <View style={styles.avatar}>
                   <Text style={styles.avatarText}>
                     {user?.name ? user.name.charAt(0).toUpperCase() : '🎮'}
@@ -118,7 +121,7 @@ const HomeScreen = ({navigation}) => {
                   <Text style={styles.userName}>{user?.name || 'Gaming Champion'}</Text>
                   <Text style={styles.userStatus}>🟢 Online • Ready to play</Text>
                 </View>
-              </View>
+              </TouchableOpacity>
               <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
                 <Text style={styles.logoutText}>Logout</Text>
               </TouchableOpacity>

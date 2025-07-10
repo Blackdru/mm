@@ -641,19 +641,20 @@ const MemoryGameScreen = ({ route, navigation }) => {
       setCurrentTurnPlayer(nextPlayerName);
     }
     
-    // Flip back immediately - no delay needed since backend handles timing
+    // Flip back after backend has processed the delay
     positions.forEach(pos => animateCardFlip(pos, true));
     
-    // Update game board to hide cards immediately
+    // Update game board to hide cards
     setGameBoard(prev => 
       prev.map((card, index) => 
         positions.includes(index) ? { ...card, isFlipped: false } : card
       )
     );
 
-    // Clear tracking immediately
+    // Clear tracking and processing state
     setFlippedCards([]);
     setSelectedCards([]);
+    setIsProcessingCard(false);
     
     // Reset timer state - turn is changing
     setTurnTimeRemaining(0);
@@ -664,23 +665,12 @@ const MemoryGameScreen = ({ route, navigation }) => {
     console.log('Cards no match:', data);
     const { positions } = data;
     
-    // Flip back immediately - no delay needed since backend handles timing
-    positions.forEach(pos => animateCardFlip(pos, true));
+    // Keep cards visible for now - backend will send mismatch event after delay
+    // This event just indicates no match was found, cards stay flipped for 700ms
+    console.log('Cards will flip back after 700ms delay');
     
-    // Update game board to hide cards immediately
-    setGameBoard(prev => 
-      prev.map((card, index) => 
-        positions.includes(index) ? { ...card, isFlipped: false } : card
-      )
-    );
-
-    // Clear tracking immediately
-    setFlippedCards([]);
-    setSelectedCards([]);
-    
-    // Reset timer state - turn is changing
-    setTurnTimeRemaining(0);
-    setLocalTimerActive(false);
+    // Clear processing state but keep cards visible
+    setIsProcessingCard(false);
   };
 
   const handleTurnChanged = (data) => {
@@ -1261,7 +1251,7 @@ const MemoryGameScreen = ({ route, navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A0A0F',
+    backgroundColor: '#1A1B23', // Lighter dark background for better daylight visibility
     paddingHorizontal: 10,
     paddingTop: 8,
     paddingBottom: 6,
@@ -1271,22 +1261,25 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     paddingVertical: 6,
     paddingHorizontal: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)', // More visible background
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: 'rgba(255, 255, 255, 0.2)', // Stronger border
   },
   title: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#00D4FF',
+    color: '#00E5FF', // Brighter cyan for better visibility
     marginBottom: 2,
     textAlign: 'center',
     letterSpacing: 0.8,
+    textShadowColor: 'rgba(0, 229, 255, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   subtitle: {
     fontSize: 10,
-    color: '#A0A0B0',
+    color: '#C0C0D0', // Brighter subtitle for better readability
     marginBottom: 6,
     textAlign: 'center',
     fontWeight: '500',
@@ -1295,28 +1288,34 @@ const styles = StyleSheet.create({
   
   // Prize pool - compact design
   prizePoolContainer: {
-    backgroundColor: 'rgba(255, 215, 0, 0.1)',
+    backgroundColor: 'rgba(255, 215, 0, 0.18)', // More visible background
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 4,
     marginBottom: 6,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255, 215, 0, 0.3)',
+    borderColor: 'rgba(255, 215, 0, 0.5)', // Stronger border
     alignSelf: 'center',
   },
   prizePoolLabel: {
     fontSize: 8,
     fontWeight: '600',
-    color: '#FFD700',
+    color: '#FFE55C', // Brighter gold
     marginBottom: 1,
     letterSpacing: 0.3,
+    textShadowColor: 'rgba(255, 215, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 1,
   },
   prizePoolAmount: {
     fontSize: 12,
     fontWeight: '800',
-    color: '#FFD700',
+    color: '#FFE55C', // Brighter gold
     letterSpacing: 0.8,
+    textShadowColor: 'rgba(255, 215, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 1,
   },
   
   // Score cards - compact layout
@@ -1329,19 +1328,19 @@ const styles = StyleSheet.create({
   },
   scoreCard: {
     flex: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    backgroundColor: 'rgba(255, 255, 255, 0.12)', // More visible background
     borderRadius: 10,
     paddingVertical: 6,
     paddingHorizontal: 8,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
+    borderColor: 'rgba(255, 255, 255, 0.25)', // Stronger border
     minHeight: 45,
     justifyContent: 'center',
   },
   myScoreCard: {
-    backgroundColor: 'rgba(0, 212, 255, 0.12)',
-    borderColor: '#00D4FF',
+    backgroundColor: 'rgba(0, 229, 255, 0.18)', // Brighter background
+    borderColor: '#00E5FF', // Brighter border
     borderWidth: 1.5,
     transform: [{ scale: 1.01 }],
   },
@@ -1354,13 +1353,13 @@ const styles = StyleSheet.create({
   scorePlayerName: {
     fontSize: 8,
     fontWeight: '600',
-    color: '#E0E0E8',
+    color: '#F0F0F8', // Brighter text
     marginBottom: 2,
     letterSpacing: 0.2,
     textAlign: 'center',
   },
   myScorePlayerName: {
-    color: '#00D4FF',
+    color: '#00E5FF', // Brighter cyan
     fontWeight: '700',
   },
   scoreText: {
@@ -1369,9 +1368,12 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     letterSpacing: 0.3,
     textAlign: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 1,
   },
   myScoreText: {
-    color: '#00D4FF',
+    color: '#00E5FF', // Brighter cyan
     fontSize: 12,
   },
   lifelinesContainer: {
@@ -1404,26 +1406,26 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 8,
     paddingHorizontal: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    backgroundColor: 'rgba(255, 255, 255, 0.12)', // More visible background
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: 'rgba(255, 255, 255, 0.2)', // Stronger border
   },
   myTurnContainer: {
-    backgroundColor: 'rgba(0, 212, 255, 0.15)',
-    borderColor: '#00D4FF',
+    backgroundColor: 'rgba(0, 229, 255, 0.22)', // Brighter background
+    borderColor: '#00E5FF', // Brighter border
     borderWidth: 1.5,
     transform: [{ scale: 1.01 }],
   },
   turnText: {
     fontSize: 12,
-    color: '#E0E0E8',
+    color: '#F0F0F8', // Brighter text
     fontWeight: '600',
     letterSpacing: 0.3,
     flex: 1,
   },
   myTurnText: {
-    color: '#00D4FF',
+    color: '#00E5FF', // Brighter cyan
     fontSize: 13,
     fontWeight: '700',
   },
@@ -1432,29 +1434,35 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 8,
     paddingVertical: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)', // More visible background
     borderRadius: 10,
     minWidth: 50,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
+    borderColor: 'rgba(255, 255, 255, 0.3)', // Stronger border
   },
   turnTimerText: {
     fontSize: 10,
     fontWeight: '600',
-    color: '#00FF88',
+    color: '#00FF9F', // Brighter green
     textAlign: 'center',
     letterSpacing: 0.3,
+    textShadowColor: 'rgba(0, 255, 159, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 1,
   },
   turnTimerPlaceholder: {
     fontSize: 10,
     fontWeight: '600',
-    color: '#808090',
+    color: '#A0A0B0', // Brighter placeholder
     textAlign: 'center',
   },
   urgentTimer: {
-    color: '#FF6B6B',
+    color: '#FF8A8A', // Brighter red
     fontSize: 11,
     fontWeight: '700',
+    textShadowColor: 'rgba(255, 138, 138, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 1,
   },
   
   // Game board - optimized dimensions
@@ -1477,24 +1485,24 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)', // More visible background
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: 'rgba(255, 255, 255, 0.2)', // Stronger border
     padding: 6,
   },
   gridCard: {
     position: 'absolute',
     borderRadius: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)', // More visible background
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
+    borderColor: 'rgba(255, 255, 255, 0.3)', // Stronger border
     justifyContent: 'center',
     alignItems: 'center',
   },
   disabledCard: {
-    opacity: 0.4,
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    opacity: 0.5, // Slightly more visible when disabled
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
   },
   invisibleCard: {
     backgroundColor: 'transparent',
@@ -1502,8 +1510,8 @@ const styles = StyleSheet.create({
   },
   selectedCard: {
     borderWidth: 2,
-    borderColor: '#00D4FF',
-    backgroundColor: 'rgba(0, 212, 255, 0.15)',
+    borderColor: '#00E5FF', // Brighter cyan
+    backgroundColor: 'rgba(0, 229, 255, 0.22)', // Brighter background
     transform: [{ scale: 1.05 }],
   },
   cardInner: {
@@ -1519,22 +1527,28 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)', // More visible background
   },
   cardFlipped: {
-    backgroundColor: 'rgba(0, 212, 255, 0.2)',
-    borderColor: '#00D4FF',
+    backgroundColor: 'rgba(0, 229, 255, 0.28)', // Brighter background
+    borderColor: '#00E5FF', // Brighter border
     borderWidth: 2,
   },
   cardSymbol: {
     fontSize: 22,
-    color: '#E0E0E8',
+    color: '#F0F0F8', // Brighter text
     fontWeight: '600',
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 1,
   },
   cardSymbolFlipped: {
-    color: '#00D4FF',
+    color: '#00E5FF', // Brighter cyan
     fontSize: 24,
     fontWeight: '700',
+    textShadowColor: 'rgba(0, 229, 255, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   
   // Controls - compact positioning
@@ -1544,20 +1558,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   controlButton: {
-    backgroundColor: 'rgba(255, 107, 107, 0.15)',
+    backgroundColor: 'rgba(255, 138, 138, 0.22)', // Brighter background
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 16,
     minWidth: 100,
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: 'rgba(255, 107, 107, 0.4)',
+    borderColor: 'rgba(255, 138, 138, 0.6)', // Stronger border
   },
   controlButtonText: {
-    color: '#FF6B6B',
+    color: '#FF8A8A', // Brighter red
     fontWeight: '700',
     fontSize: 12,
     letterSpacing: 0.5,
+    textShadowColor: 'rgba(255, 138, 138, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 1,
   },
   
   // Leaderboard modal - improved layout
@@ -1575,37 +1592,43 @@ const styles = StyleSheet.create({
     paddingVertical: 40,
   },
   leaderboardModal: {
-    backgroundColor: 'rgba(10, 10, 15, 0.98)',
+    backgroundColor: 'rgba(26, 27, 35, 0.98)', // Lighter background
     borderRadius: 24,
     padding: 24,
     width: '100%',
     maxWidth: 400,
     maxHeight: '90%',
     borderWidth: 2,
-    borderColor: 'rgba(0, 212, 255, 0.3)',
+    borderColor: 'rgba(0, 229, 255, 0.4)', // Brighter border
   },
   leaderboardTitle: {
     fontSize: 24,
     fontWeight: '800',
-    color: '#00D4FF',
+    color: '#00E5FF', // Brighter cyan
     textAlign: 'center',
     marginBottom: 16,
     letterSpacing: 1,
+    textShadowColor: 'rgba(0, 229, 255, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   prizePoolDisplay: {
-    backgroundColor: 'rgba(255, 215, 0, 0.1)',
+    backgroundColor: 'rgba(255, 215, 0, 0.18)', // More visible background
     borderRadius: 16,
     padding: 16,
     marginBottom: 16,
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: 'rgba(255, 215, 0, 0.3)',
+    borderColor: 'rgba(255, 215, 0, 0.5)', // Stronger border
   },
   prizePoolDisplayText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#FFD700',
+    color: '#FFE55C', // Brighter gold
     letterSpacing: 0.5,
+    textShadowColor: 'rgba(255, 215, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   leaderboardList: {
     marginBottom: 16,
@@ -1613,16 +1636,16 @@ const styles = StyleSheet.create({
   leaderboardItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    backgroundColor: 'rgba(255, 255, 255, 0.12)', // More visible background
     borderRadius: 14,
     padding: 12,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: 'rgba(255, 255, 255, 0.2)', // Stronger border
   },
   winnerItem: {
-    backgroundColor: 'rgba(0, 212, 255, 0.1)',
-    borderColor: '#00D4FF',
+    backgroundColor: 'rgba(0, 229, 255, 0.15)', // Brighter background
+    borderColor: '#00E5FF', // Brighter border
     borderWidth: 2,
     transform: [{ scale: 1.02 }],
   },
@@ -1634,7 +1657,7 @@ const styles = StyleSheet.create({
   rankText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#E0E0E8',
+    color: '#F0F0F8', // Brighter text
     letterSpacing: 0.5,
   },
   crownIcon: {
@@ -1648,11 +1671,11 @@ const styles = StyleSheet.create({
   playerNameText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#E0E0E8',
+    color: '#F0F0F8', // Brighter text
     letterSpacing: 0.3,
   },
   winnerText: {
-    color: '#00D4FF',
+    color: '#00E5FF', // Brighter cyan
     fontWeight: '700',
   },
   playerScoreText: {
@@ -1677,7 +1700,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   winnerAmountText: {
-    color: '#00D4FF',
+    color: '#00E5FF', // Brighter cyan
     fontSize: 16,
     fontWeight: '700',
   },
@@ -1690,10 +1713,13 @@ const styles = StyleSheet.create({
   timerText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#FFD700',
+    color: '#FFE55C', // Brighter gold
     marginBottom: 10,
     textAlign: 'center',
     letterSpacing: 0.5,
+    textShadowColor: 'rgba(255, 215, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   timerBar: {
     width: '100%',
@@ -1706,26 +1732,26 @@ const styles = StyleSheet.create({
   },
   timerProgress: {
     height: '100%',
-    backgroundColor: '#00D4FF',
+    backgroundColor: '#00E5FF', // Brighter cyan
     borderRadius: 3,
   },
   
   // Waiting screen
   waitingText: {
     fontSize: 16,
-    color: '#E0E0E8',
+    color: '#F0F0F8', // Brighter text
     textAlign: 'center',
     marginBottom: 16,
     fontWeight: '500',
     letterSpacing: 0.5,
   },
   startButton: {
-    backgroundColor: '#00D4FF',
+    backgroundColor: '#00E5FF', // Brighter cyan
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 16,
     borderWidth: 2,
-    borderColor: 'rgba(0, 212, 255, 0.3)',
+    borderColor: 'rgba(0, 229, 255, 0.4)', // Brighter border
   },
   startButtonText: {
     fontSize: 14,
@@ -1753,16 +1779,16 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   gameReasonContainer: {
-    backgroundColor: 'rgba(0, 212, 255, 0.15)',
+    backgroundColor: 'rgba(0, 229, 255, 0.22)', // Brighter background
     borderRadius: 12,
     padding: 12,
     marginBottom: 12,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(0, 212, 255, 0.3)',
+    borderColor: 'rgba(0, 229, 255, 0.4)', // Brighter border
   },
   gameReasonText: {
-    color: '#00D4FF',
+    color: '#00E5FF', // Brighter cyan
     fontSize: 14,
     fontWeight: '600',
     textAlign: 'center',

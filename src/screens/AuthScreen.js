@@ -11,6 +11,7 @@ import {
   ScrollView,
   ActivityIndicator,
   SafeAreaView,
+  Image,
 } from 'react-native';
 import {useAuth} from '../context/AuthContext';
 import { theme, commonStyles } from '../styles/theme';
@@ -153,10 +154,13 @@ const AuthScreen = ({navigation}) => {
             <View style={styles.header}>
               <View style={styles.logoContainer}>
                 <View style={styles.logoCircle}>
-                  <Text style={styles.logoEmoji}>🎮</Text>
+                  <Image 
+                    source={require('../ic_launcher_round.png')}
+                    style={styles.logoImage}
+                    resizeMode="cover"
+                  />
                 </View>
-                <Text style={styles.appName}>BUDZEE</Text>
-                <Text style={styles.tagline}>Gaming Arena</Text>
+                <Text style={styles.tagline}>Crazy Rewards</Text>
               </View>
               
               <View style={styles.welcomeContainer}>
@@ -165,7 +169,7 @@ const AuthScreen = ({navigation}) => {
                 </Text>
                 <Text style={styles.welcomeSubtitle}>
                   {step === 'phone'
-                    ? 'Enter your mobile number to start your gaming journey'
+                    ? 'Enter your mobile number to start !'
                     : `We've sent a 6-digit OTP to ${phoneNumber}`}
                 </Text>
               </View>
@@ -320,17 +324,19 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.sm,
   },
   logoCircle: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: theme.colors.primary,
+    width: 120,
+    height: 120,
+    borderRadius: 40,
+    backgroundColor: 'transparent',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: theme.spacing.sm,
     ...theme.shadows.primaryShadow,
   },
-  logoEmoji: {
-    fontSize: 28,
+  logoImage: {
+    width: 120,
+    height: 120,
+    borderRadius: 40,
   },
   appName: {
     fontSize: theme.fonts.sizes.xxl,
