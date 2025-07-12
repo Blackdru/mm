@@ -298,7 +298,7 @@ const MatchmakingScreen = ({navigation, route}) => {
             
             <View style={styles.infoCard}>
               <Text style={styles.infoIcon}>👥</Text>
-              <Text style={styles.infoValue}>{playersFound}/{playerCount}</Text>
+              <Text style={styles.infoValue}>{playerCount}</Text>
               <Text style={styles.infoLabel}>Players</Text>
             </View>
             

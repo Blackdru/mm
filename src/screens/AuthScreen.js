@@ -119,7 +119,8 @@ const AuthScreen = ({navigation}) => {
     } catch (error) {
       setLoading(false);
       console.error('OTP verification error:', error);
-      Alert.alert('Error', 'Something went wrong. Please try again.');
+      const errorMessage = error.message || 'Something went wrong. Please try again.';
+      Alert.alert('Error', errorMessage);
     }
   };
 

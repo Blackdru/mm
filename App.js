@@ -1,5 +1,5 @@
 import React, {useState, useEffect} from 'react';
-import {StatusBar, Alert, View, Text, ActivityIndicator, StyleSheet, Platform} from 'react-native';
+import {StatusBar, Alert, View, Text, ActivityIndicator, StyleSheet, Platform, AppState} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
@@ -31,6 +31,9 @@ import ConnectionStatus from './src/components/ConnectionStatus';
 // Theme
 import { theme } from './src/styles/theme';
 import GradientBackground from './src/components/GradientBackground';
+
+// Socket cleanup
+import { cleanupSocket } from './src/config/socket';
 
 const AppNavigator = () => {
   const [currentScreen, setCurrentScreen] = useState('Auth');
@@ -154,6 +157,30 @@ const loadingStyles = StyleSheet.create({
 });
 
 const App = () => {
+  useEffect(() => {
+    const handleAppStateChange = (nextAppState) => {
+      if (nextAppState === 'background' || nextAppState === 'inactive') {
+        console.log('App going to background, cleaning up connections...');
+        // Don't disconnect socket completely, just reduce activity
+      } else if (nextAppState === 'active') {
+        console.log('App coming to foreground...');
+        // Reconnect or refresh connections if needed
+      }
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+
+    // Cleanup on app unmount
+    return () => {
+      subscription?.remove();
+      try {
+        cleanupSocket();
+      } catch (error) {
+        console.error('Error cleaning up socket:', error);
+      }
+    };
+  }, []);
+
   return (
     <AuthProvider>
       <WalletProvider>

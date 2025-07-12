@@ -149,7 +149,7 @@ const ProfileScreen = ({ navigation }) => {
                 
                 {/* Email Input */}
                 <View style={styles.fieldContainer}>
-                  <Text style={styles.fieldLabel}>📧 Email Address (Optional)</Text>
+                  <Text style={styles.fieldLabel}>📧 Email Address*</Text>
                   <TextInput
                     style={[commonStyles.input, styles.textInput]}
                     value={email}
