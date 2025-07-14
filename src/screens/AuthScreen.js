@@ -154,13 +154,13 @@ const AuthScreen = ({navigation}) => {
             {/* Attractive Header */}
             <View style={styles.header}>
               <View style={styles.logoContainer}>
-                <View style={styles.logoCircle}>
                   <Image 
                     source={require('../ic_launcher_round.png')}
                     style={styles.logoImage}
                     resizeMode="cover"
                   />
-                </View>
+                  <Text style={styles.welcomeTitle}>Budzee</Text>
+                
                 <Text style={styles.tagline}>Crazy Rewards</Text>
               </View>
               

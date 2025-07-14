@@ -32,14 +32,14 @@ const SettingsScreen = ({ navigation }) => {
       title: 'Privacy Policy',
       subtitle: 'How we protect your data',
       icon: '🔒',
-      onPress: () => handleOpenLink('https://klikgames.in/privacy'),
+      onPress: () => handleOpenLink('https://budzee.in/privacy'),
     },
     {
       id: 'terms',
       title: 'Terms & Conditions',
       subtitle: 'Rules and regulations',
       icon: '📋',
-      onPress: () => handleOpenLink('https://klikgames.in/terms'),
+      onPress: () => handleOpenLink('https://budzee.in/terms'),
     },
     {
       id: 'faq',
@@ -60,7 +60,7 @@ const SettingsScreen = ({ navigation }) => {
       title: 'Customer Support',
       subtitle: 'Get help and support',
       icon: '🎧',
-      onPress: () => handleOpenLink('https://klikgames.in/contact'),
+      onPress: () => handleOpenLink('https://budzee.in/contact'),
     },
     {
       id: 'feedback',
@@ -91,7 +91,7 @@ const SettingsScreen = ({ navigation }) => {
       [
         {
           text: 'Email',
-          onPress: () => Linking.openURL('mailto:support@budzee.com'),
+          onPress: () => Linking.openURL('mailto:support@budzee.in'),
         },
         {
           text: 'WhatsApp',

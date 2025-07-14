@@ -33,6 +33,12 @@ const UserConsentScreen = ({ navigation, route }) => {
       <SafeAreaView style={styles.container}>
         <ScrollView style={styles.scrollContainer} showsVerticalScrollIndicator={false}>
 
+          <View style={styles.header}>
+            <Text style={styles.subtitle}>
+              Please read and accept the terms below
+            </Text>
+          </View>
+
           <View style={[commonStyles.attractiveCard, styles.consentCard]}>
             <Text style={styles.sectionTitle}>🎮 Real Money Gaming Disclaimer</Text>
             <Text style={styles.consentText}>

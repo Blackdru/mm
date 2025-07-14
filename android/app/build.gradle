@@ -79,13 +79,11 @@ android {
 
     namespace "com.ludogameapp"
     defaultConfig {
-        applicationId "com.budzee.gaming"
+        applicationId "com.budzee.entertainment"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0.0"
-        // Add network security config for HTTPS
-        manifestPlaceholders = [usesCleartextTraffic: "false"]
     }
     signingConfigs {
         debug {
@@ -107,13 +105,9 @@ android {
         }
         release {
             signingConfig signingConfigs.release
-            minifyEnabled enableProguardInReleaseBuilds
-            proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
-            // Disable debugging for release
-            debuggable false
-            jniDebuggable false
-            renderscriptDebuggable false
+            minifyEnabled false
             zipAlignEnabled true
+            shrinkResources false
         }
     }
 }

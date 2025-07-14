@@ -429,17 +429,7 @@ const MemoryGameScreen = ({ route, navigation }) => {
     console.log('Cards matched:', data);
     const { positions, playerId: matchingPlayer, newScore, matchedPairs } = data;
     
-    // Update matched cards
-    setMatchedCards(prev => [...prev, ...positions]);
-    
-    // Update game board to keep cards face up
-    setGameBoard(prev => 
-      prev.map((card, index) => 
-        positions.includes(index) ? { ...card, isMatched: true } : card
-      )
-    );
-
-    // Update score for the matching player
+    // Update score for the matching player immediately
     if (matchingPlayer && newScore !== undefined) {
       setScores(prev => ({
         ...prev,
@@ -447,13 +437,26 @@ const MemoryGameScreen = ({ route, navigation }) => {
       }));
     }
 
-    // Clear flipped cards
-    setFlippedCards([]);
-    setSelectedCards([]);
-    
-    // Reset timer state - player gets another turn so timer will restart
-    setTurnTimeRemaining(0);
-    setLocalTimerActive(false);
+    // Keep cards visible for 700ms before marking as matched
+    setTimeout(() => {
+      // Update matched cards after delay
+      setMatchedCards(prev => [...prev, ...positions]);
+      
+      // Update game board to mark cards as matched
+      setGameBoard(prev => 
+        prev.map((card, index) => 
+          positions.includes(index) ? { ...card, isMatched: true } : card
+        )
+      );
+
+      // Clear flipped cards after delay
+      setFlippedCards([]);
+      setSelectedCards([]);
+      
+      // Reset timer state - player gets another turn so timer will restart
+      setTurnTimeRemaining(0);
+      setLocalTimerActive(false);
+    }, 700);
   };
 
   const handleCloseCards = (data) => {
