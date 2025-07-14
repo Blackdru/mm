@@ -32,12 +32,6 @@ const UserConsentScreen = ({ navigation, route }) => {
     <GradientBackground>
       <SafeAreaView style={styles.container}>
         <ScrollView style={styles.scrollContainer} showsVerticalScrollIndicator={false}>
-          <View style={styles.header}>
-            <Text style={styles.title}>⚖️ User Consent</Text>
-            <Text style={styles.subtitle}>
-              Please read and accept the terms below
-            </Text>
-          </View>
 
           <View style={[commonStyles.attractiveCard, styles.consentCard]}>
             <Text style={styles.sectionTitle}>🎮 Real Money Gaming Disclaimer</Text>
@@ -109,11 +103,6 @@ const UserConsentScreen = ({ navigation, route }) => {
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.declineButton}
-            onPress={() => navigation.goBack()}>
-            <Text style={styles.declineText}>❌ I Decline</Text>
-          </TouchableOpacity>
         </ScrollView>
       </SafeAreaView>
     </GradientBackground>

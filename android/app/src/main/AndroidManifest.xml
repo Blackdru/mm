@@ -5,8 +5,9 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.READ_SMS" />
     <uses-permission android:name="android.permission.RECEIVE_SMS" />
-    <uses-permission android:name="android.permission.GET_ACCOUNTS" />
-    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    
+    <!-- Google Play Integrity API permissions -->
+    <uses-permission android:name="com.google.android.gms.permission.AD_ID" />
 
     <!-- Queries for UPI apps and payment methods -->
     <queries>
@@ -85,6 +86,8 @@
     android:name="com.razorpay.ValidateVpaActivity"
     android:exported="false"
     android:configChanges="keyboard|keyboardHidden|orientation|screenSize" />
+
+  <!-- Play Integrity API removed - not needed for non-Play Store apps -->
 </application>
 
 </manifest>

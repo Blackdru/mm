@@ -10,10 +10,12 @@ import {
   Dimensions,
   SafeAreaView,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {useAuth} from '../context/AuthContext';
 import {useWallet} from '../context/WalletContext';
 import { theme, commonStyles } from '../styles/theme';
 import GradientBackground from '../components/GradientBackground';
+import WelcomeBonusPopup from '../components/WelcomeBonusPopup';
 
 const { width } = Dimensions.get('window');
 
@@ -21,14 +23,22 @@ const HomeScreen = ({navigation}) => {
   const {user, logout} = useAuth();
   const {balance, gameBalance, withdrawableBalance, transactions, fetchBalance, fetchTransactions} = useWallet();
   const [refreshing, setRefreshing] = useState(false);
+  const [showWelcomeBonus, setShowWelcomeBonus] = useState(false);
 
   useEffect(() => {
-  const loadData = async () => {
-    await fetchBalance();
-    await fetchTransactions(); // Always fetch, or remove this if you load elsewhere
-  };
-  loadData();
-}, []);
+    const loadData = async () => {
+      await fetchBalance();
+      await fetchTransactions(); // Always fetch, or remove this if you load elsewhere
+      
+      // Check for welcome bonus popup
+      const shouldShowWelcomeBonus = await AsyncStorage.getItem('showWelcomeBonus');
+      if (shouldShowWelcomeBonus === 'true') {
+        setShowWelcomeBonus(true);
+        await AsyncStorage.removeItem('showWelcomeBonus'); // Remove flag after showing
+      }
+    };
+    loadData();
+  }, []);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -72,6 +82,10 @@ const HomeScreen = ({navigation}) => {
         {text: 'Logout', onPress: logout, style: 'destructive'},
       ]
     );
+  };
+
+  const handleWelcomeBonusClose = () => {
+    setShowWelcomeBonus(false);
   };
 
   const games = [
@@ -300,6 +314,12 @@ const HomeScreen = ({navigation}) => {
           </View>
         </ScrollView>
       </SafeAreaView>
+      
+      {/* Welcome Bonus Popup */}
+      <WelcomeBonusPopup 
+        visible={showWelcomeBonus} 
+        onClose={handleWelcomeBonusClose} 
+      />
     </GradientBackground>
   );
 };

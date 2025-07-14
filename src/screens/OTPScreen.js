@@ -24,12 +24,13 @@ const OTPScreen = ({ route, navigation }) => {
         await AsyncStorage.setItem('token', res.data.token);
         await AsyncStorage.setItem('user', JSON.stringify(res.data.user));
         
-        // Navigate based on whether user is new or existing
-        if (res.data.isNewUser) {
-          navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
-        } else {
-          navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
+        // Store welcome bonus flag for home screen popup
+        if (res.data.hasWelcomeBonus) {
+          await AsyncStorage.setItem('showWelcomeBonus', 'true');
         }
+        
+        // Navigate to home screen
+        navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
       } else {
         setError(res.data.message || 'Invalid OTP');
       }

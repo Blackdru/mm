@@ -106,6 +106,11 @@ export const AuthProvider = ({children}) => {
         // Store auth data
         await AsyncStorage.setItem('authToken', data.token);
         await AsyncStorage.setItem('userData', JSON.stringify(data.user));
+        
+        // Store welcome bonus flag if present
+        if (data.hasWelcomeBonus) {
+          await AsyncStorage.setItem('showWelcomeBonus', 'true');
+        }
 
         dispatch({
           type: 'LOGIN_SUCCESS',
