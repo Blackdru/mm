@@ -18,6 +18,8 @@ class MainApplication : Application(), ReactApplication {
                 PackageList(this).packages.apply {
                     // Add our custom Razorpay native module
                     add(RazorpayNativePackage())
+                    // Add our custom APK installer module
+                    add(ApkInstallerPackage())
                     // Packages that cannot be autolinked yet can be added manually here, for example:
                     // add(MyReactNativePackage())
                     // Most packages are now autolinked, including react-native-razorpay

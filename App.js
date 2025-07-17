@@ -27,6 +27,7 @@ import {WalletProvider} from './src/context/WalletContext';
 // Components
 import ErrorBoundary from './src/components/ErrorBoundary';
 import ConnectionStatus from './src/components/ConnectionStatus';
+import UpdateChecker from './src/components/UpdateChecker';
 
 // Theme
 import { theme } from './src/styles/theme';
@@ -128,6 +129,7 @@ const AppNavigator = () => {
           <ErrorBoundary navigation={{navigate}}>
             {renderScreen()}
           </ErrorBoundary>
+          <UpdateChecker />
         </GradientBackground>
       </SafeAreaView>
     </SafeAreaProvider>
