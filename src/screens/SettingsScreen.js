@@ -312,7 +312,7 @@ const SettingsScreen = ({ navigation }) => {
 
           {/* App Version */}
           <View style={styles.versionCard}>
-            <Text style={styles.versionText}>Budzee Gaming v1.0.0</Text>
+            <Text style={styles.versionText}>Budzee Gaming v1.0.2</Text>
             <Text style={styles.versionSubtext}>Latest version installed</Text>
           </View>
 

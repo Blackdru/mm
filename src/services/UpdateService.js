@@ -7,7 +7,7 @@ const { ApkInstaller } = NativeModules;
 
 class UpdateService {
   constructor() {
-    this.currentVersion = '1.0.0'; 
+    this.currentVersion = '1.0.1'; 
     this.updateCheckUrl = `${config.SERVER_URL}/updates/latest-version.json`;
     this.lastCheckTime = 0;
     this.minCheckInterval = 5 * 60 * 1000; // 5 minutes minimum between checks
@@ -68,7 +68,7 @@ class UpdateService {
         headers: {
           'Accept': 'application/json',
           'Cache-Control': 'no-cache',
-          'User-Agent': 'Budzee-App/1.0.0'
+          'User-Agent': 'Budzee-App/1.0.1'
         },
         timeout: 10000 // 10 second timeout
       });
