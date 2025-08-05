@@ -160,7 +160,8 @@ const MemoryGameScreen = ({ route, navigation }) => {
       socket.off('MEMORY_LIFELINE_LOST');
       socket.off('MEMORY_PLAYER_ELIMINATED');
       
-      // Only clean up game state, not matchmaking (preserve queue)
+      // Reset join flag and clean up game state
+      hasJoinedRoom.current = false;
       setTimeout(() => cleanupGameState(), 0);
     };
   }, [socket]);
@@ -279,9 +280,13 @@ const MemoryGameScreen = ({ route, navigation }) => {
   };
 
   // Auto-join room and start game when component mounts
+  const hasJoinedRoom = useRef(false);
+  
   useEffect(() => {
-    if (socket && socket.connected && roomId && playerId) {
+    if (socket && socket.connected && roomId && playerId && !hasJoinedRoom.current) {
       console.log('Auto-joining memory game room:', roomId);
+      hasJoinedRoom.current = true;
+      
       socket.emit('JOIN_MEMORY_ROOM', {
         roomId,
         playerId,
@@ -704,7 +709,24 @@ const MemoryGameScreen = ({ route, navigation }) => {
       setIsProcessingCard(false);
     }
     
-    // Show user-friendly error message
+    // Handle room join failures with retry
+    if (data.message === 'Failed to join room.' || data.message === 'Game not found.') {
+      console.log('Room join failed, attempting retry...');
+      // Retry joining the room after a short delay
+      setTimeout(() => {
+        if (socket && socket.connected && roomId && playerId && !hasJoinedRoom.current) {
+          console.log('Retrying room join...');
+          socket.emit('JOIN_MEMORY_ROOM', {
+            roomId,
+            playerId,
+            playerName
+          });
+        }
+      }, 2000);
+      return; // Don't show alert for join failures, just retry
+    }
+    
+    // Show user-friendly error message for other errors
     Alert.alert('Game Error', data.message || 'An error occurred during the game.');
   };
 
@@ -717,20 +739,34 @@ const MemoryGameScreen = ({ route, navigation }) => {
     console.log('Current state received:', data);
     setLastActivity(Date.now());
     
-    // Restore game board state
-    setGameBoard(data.gameBoard || []);
-    setScores(data.scores || {});
-    setCurrentTurn(data.currentPlayerId);
+    // Always update game board if valid data is received
+    if (data.board && data.board.length > 0) {
+      setGameBoard(data.board);
+      setGameStatus('playing');
+    }
     
-    // Update prize pool if provided
+    if (data.scores) {
+      setScores(data.scores);
+    }
+    
+    if (data.currentPlayerId) {
+      setCurrentTurn(data.currentPlayerId);
+      setIsMyTurn(data.currentPlayerId === playerId);
+    }
+    
+    // Update prize pool if provided - ensure it's properly set
     if (typeof data.prizePool === 'number' && data.prizePool >= 0) {
       setPrizePool(data.prizePool);
       console.log('Updated prize pool from current state:', data.prizePool);
+    } else if (data.prizePool === undefined && prizePool === 0) {
+      // If prize pool is not provided but we don't have one, try to get it from players/entry fee
+      console.log('Prize pool not provided in current state, keeping existing value:', prizePool);
     }
     
     // Restore lifelines if provided
     if (data.lifelines) {
       setLifelines(data.lifelines);
+      console.log('Updated lifelines from current state:', data.lifelines);
     }
     
     // Grid layout doesn't need position restoration
@@ -752,9 +788,16 @@ const MemoryGameScreen = ({ route, navigation }) => {
       setCurrentTurnPlayer(data.currentPlayer.name);
     }
     
-    // Clear any frozen states after reconnection
+    // Update matched cards based on board state
+    if (data.board && data.board.length > 0) {
+      const matchedPositions = data.board
+        .map((card, index) => card.isMatched ? index : -1)
+        .filter(index => index !== -1);
+      setMatchedCards(matchedPositions);
+    }
+    
+    // Clear flipped cards to prevent stuck states
     setFlippedCards([]);
-    setMatchedCards(data.gameBoard ? data.gameBoard.filter((card, index) => card.isMatched).map((card, index) => index) : []);
   };
 
   const handlePlayerLeft = (data) => {
@@ -831,10 +874,8 @@ const MemoryGameScreen = ({ route, navigation }) => {
     // Set processing state
     setIsProcessingCard(true);
     
-    // Optimistically update selected cards for immediate feedback
-    setSelectedCards(prev => [...prev, position]);
-    setGameBoard(prev => prev.map((card, idx) => idx === position ? { ...card, isFlipped: true } : card));
-    animateCardFlip(position);
+    // Don't do optimistic updates - wait for server response to prevent issues
+    // This prevents icons displaying late and game hanging
     
     // Emit card selection to server
     if (socket && socket.connected) {
@@ -848,9 +889,6 @@ const MemoryGameScreen = ({ route, navigation }) => {
       setTimeout(() => setIsProcessingCard(false), 1000);
     } else {
       console.log('Socket not connected, cannot select card');
-      // Revert optimistic update
-      setSelectedCards(prev => prev.filter(p => p !== position));
-      setGameBoard(prev => prev.map((card, idx) => idx === position ? { ...card, isFlipped: false } : card));
       setIsProcessingCard(false);
       Alert.alert('Connection Error', 'Lost connection to server. Please try again.');
     }

@@ -21,8 +21,7 @@ const UpdateChecker = () => {
   useEffect(() => {
     checkForUpdates();
     
-    // Check for updates every 2 hours (reduced from 30 minutes to prevent rate limiting)
-    const interval = setInterval(checkForUpdates, 2 * 60 * 60 * 1000);
+    // Only check once on startup, no periodic checks
     
     // Pulse animation for the update icon
     const pulseAnimation = Animated.loop(
@@ -61,7 +60,6 @@ const UpdateChecker = () => {
     const subscription = AppState.addEventListener('change', handleAppStateChange);
     
     return () => {
-      clearInterval(interval);
       subscription?.remove();
       pulseAnimation.stop();
     };
@@ -417,7 +415,7 @@ const UpdateChecker = () => {
                 styles.updateButton,
                 (!isMandatory && !downloading && !waitingForPermission) ? {} : { flex: 1 }
               ]} 
-              onPress={error ? handleRetry : handleUpdate}
+              onPress={handleUpdate}
               disabled={downloading && !error}
             >
               <LinearGradient
@@ -435,11 +433,10 @@ const UpdateChecker = () => {
                 ) : (
                   <>
                     <Text style={styles.updateIcon}>
-                      {waitingForPermission ? '⏳' : error ? '🔄' : '🚀'}
+                      {waitingForPermission ? '⏳' : '🚀'}
                     </Text>
                     <Text style={styles.updateButtonText}>
-                      {waitingForPermission ? 'WAITING...' :
-                       error ? 'RETRY NOW' : 'UPDATE NOW'}
+                      {waitingForPermission ? 'WAITING...' : 'UPDATE NOW'}
                     </Text>
                   </>
                 )}

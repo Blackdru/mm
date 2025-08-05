@@ -312,7 +312,7 @@ const SettingsScreen = ({ navigation }) => {
 
           {/* App Version */}
           <View style={styles.versionCard}>
-            <Text style={styles.versionText}>Budzee Gaming v1.0.2</Text>
+            <Text style={styles.versionText}>Budzee Gaming v1.0.3</Text>
             <Text style={styles.versionSubtext}>Latest version installed</Text>
           </View>
 
@@ -348,7 +348,7 @@ const SettingsScreen = ({ navigation }) => {
               Budrock Technologies Private Limited
             </Text>
             <Text style={styles.footerSubtext}>
-              © 2024 Budzee. All rights reserved.
+              © 2025 Budzee. All rights reserved.
             </Text>
           </View>
         </ScrollView>

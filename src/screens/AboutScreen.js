@@ -88,7 +88,6 @@ const AboutScreen = ({ navigation }) => {
             </View>
             <Text style={styles.appName}>BUDZEE GAMING</Text>
             <Text style={styles.tagline}>Where Skills Meet Rewards</Text>
-            <Text style={styles.version}>Version 1.0.0</Text>
           </View>
 
           {/* Mission Section */}

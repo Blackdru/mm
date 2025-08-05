@@ -16,6 +16,7 @@ import {useWallet} from '../context/WalletContext';
 import { theme, commonStyles } from '../styles/theme';
 import GradientBackground from '../components/GradientBackground';
 import WelcomeBonusPopup from '../components/WelcomeBonusPopup';
+import ConnectionStatusModal from '../components/ConnectionStatusModal';
 
 const { width } = Dimensions.get('window');
 
@@ -320,6 +321,9 @@ const HomeScreen = ({navigation}) => {
         visible={showWelcomeBonus} 
         onClose={handleWelcomeBonusClose} 
       />
+      
+      {/* Connection Status Modal */}
+      <ConnectionStatusModal />
     </GradientBackground>
   );
 };

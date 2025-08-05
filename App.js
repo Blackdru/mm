@@ -36,6 +36,9 @@ import GradientBackground from './src/components/GradientBackground';
 // Socket cleanup
 import { cleanupSocket } from './src/config/socket';
 
+// Push notifications
+import PushNotificationService from './src/services/PushNotificationService';
+
 const AppNavigator = () => {
   const [currentScreen, setCurrentScreen] = useState('Auth');
   const [screenParams, setScreenParams] = useState({});
@@ -160,6 +163,28 @@ const loadingStyles = StyleSheet.create({
 
 const App = () => {
   useEffect(() => {
+    // Initialize push notifications (non-blocking)
+    const initializePushNotifications = async () => {
+      try {
+        console.log('🔔 Initializing push notifications...');
+        const initialized = await PushNotificationService.initialize();
+        if (initialized) {
+          await PushNotificationService.createNotificationChannel();
+          console.log('✅ Push notifications initialized successfully');
+        } else {
+          console.log('⚠️ Push notifications not available, continuing without them');
+        }
+      } catch (error) {
+        console.warn('⚠️ Push notifications failed to initialize, continuing without them:', error.message);
+        // App should continue to work without push notifications
+      }
+    };
+
+    // Initialize push notifications in background (don't block app startup)
+    setTimeout(() => {
+      initializePushNotifications();
+    }, 2000); // Wait 2 seconds after app startup
+
     const handleAppStateChange = (nextAppState) => {
       if (nextAppState === 'background' || nextAppState === 'inactive') {
         console.log('App going to background, cleaning up connections...');
@@ -177,8 +202,9 @@ const App = () => {
       subscription?.remove();
       try {
         cleanupSocket();
+        PushNotificationService.unregisterToken();
       } catch (error) {
-        console.error('Error cleaning up socket:', error);
+        console.error('Error cleaning up:', error);
       }
     };
   }, []);

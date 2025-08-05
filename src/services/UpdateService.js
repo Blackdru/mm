@@ -7,11 +7,8 @@ const { ApkInstaller } = NativeModules;
 
 class UpdateService {
   constructor() {
-    this.currentVersion = '1.0.1'; 
+    this.currentVersion = '1.0.3'; 
     this.updateCheckUrl = `${config.SERVER_URL}/updates/latest-version.json`;
-    this.lastCheckTime = 0;
-    this.minCheckInterval = 5 * 60 * 1000; // 5 minutes minimum between checks
-    this.rateLimitRetryDelay = 60 * 1000; // 1 minute delay for rate limit
     this.maxRetries = 3;
   }
 
@@ -34,18 +31,6 @@ class UpdateService {
 
   async checkForUpdates(forceCheck = false) {
     try {
-      // Rate limiting: Check if enough time has passed since last check
-      const now = Date.now();
-      if (!forceCheck && (now - this.lastCheckTime) < this.minCheckInterval) {
-        const remainingTime = Math.ceil((this.minCheckInterval - (now - this.lastCheckTime)) / 1000);
-        console.log(`⏰ Rate limited: Please wait ${remainingTime} seconds before checking again`);
-        return {
-          hasUpdate: false,
-          updateInfo: null,
-          error: `Please wait ${remainingTime} seconds before checking again`
-        };
-      }
-
       console.log('🔍 Checking for app updates...');
       console.log('🌐 Update check URL:', this.updateCheckUrl);
       
@@ -68,7 +53,7 @@ class UpdateService {
         headers: {
           'Accept': 'application/json',
           'Cache-Control': 'no-cache',
-          'User-Agent': 'Budzee-App/1.0.1'
+          'User-Agent': 'Budzee-App/1.0.3'
         },
         timeout: 10000 // 10 second timeout
       });
@@ -101,9 +86,6 @@ class UpdateService {
           throw new Error(`Server error ${response.status}: ${response.statusText}`);
         }
       }
-      
-      // Update last check time on successful request
-      this.lastCheckTime = Date.now();
       
       const updateInfo = await response.json();
       

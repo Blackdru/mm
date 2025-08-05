@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "978701847957",
+    "project_id": "budzee-2c141",
+    "storage_bucket": "budzee-2c141.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:978701847957:android:574c1373f18f1e42cbfa9c",
+        "android_client_info": {
+          "package_name": "com.budzee.entertainment"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDU5Nb-xQeKwfz82PohHj8az446u5dLHvo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
