@@ -2,6 +2,8 @@ import React, {createContext, useContext, useReducer, useEffect} from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import config from '../config/config';
 import { makeApiRequest, handleApiError, validateResponse } from '../utils/apiUtils';
+import deviceUtils from '../utils/deviceUtils';
+import versionUtils from '../utils/versionUtils';
 
 const AuthContext = createContext();
 
@@ -51,6 +53,16 @@ export const AuthProvider = ({children}) => {
 
   const checkAuthState = async () => {
     try {
+      // Check if force logout is required due to app update
+      const shouldForceLogout = await versionUtils.checkForceLogout();
+      
+      if (shouldForceLogout) {
+        console.log('Force logout required - clearing auth data');
+        await versionUtils.clearAuthDataForUpdate();
+        dispatch({type: 'SET_LOADING', payload: false});
+        return;
+      }
+
       const token = await AsyncStorage.getItem('authToken');
       const userData = await AsyncStorage.getItem('userData');
 
@@ -90,7 +102,11 @@ export const AuthProvider = ({children}) => {
     try {
       console.log('Verifying OTP for:', phoneNumber, 'OTP:', otp, 'Referral:', referralCode);
       
-      const requestBody = { phoneNumber, otp };
+      // Get device ID
+      const deviceId = await deviceUtils.getDeviceId();
+      console.log('Device ID:', deviceId);
+      
+      const requestBody = { phoneNumber, otp, deviceId };
       if (referralCode) {
         requestBody.referralCode = referralCode;
       }
@@ -111,6 +127,9 @@ export const AuthProvider = ({children}) => {
         if (data.hasWelcomeBonus) {
           await AsyncStorage.setItem('showWelcomeBonus', 'true');
         }
+
+        // Update app version after successful login
+        await versionUtils.updateAppVersion();
 
         dispatch({
           type: 'LOGIN_SUCCESS',
@@ -163,11 +182,16 @@ export const AuthProvider = ({children}) => {
 
   const refreshToken = async () => {
     try {
+      // Get device ID for verification
+      const deviceId = await deviceUtils.getDeviceId();
+      
       const response = await fetch(`${config.API_BASE_URL}/auth/refresh-token`, {
         method: 'POST',
         headers: {
+          'Content-Type': 'application/json',
           'Authorization': `Bearer ${state.token}`,
         },
+        body: JSON.stringify({ deviceId }),
       });
 
       const data = await response.json();
@@ -180,6 +204,11 @@ export const AuthProvider = ({children}) => {
           type: 'LOGIN_SUCCESS',
           payload: {user: data.user, token: data.token},
         });
+      } else if (response.status === 403) {
+        // Device verification failed - force logout
+        console.log('Device verification failed during token refresh - logging out');
+        await logout();
+        return { success: false, message: 'Device verification failed. Please log in again.', forceLogout: true };
       }
 
       return data;

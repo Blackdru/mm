@@ -1,6 +1,6 @@
 {
   "name": "Budzee",
-  "version": "1.0.2",
+  "version": "1.0.4",
   "private": true,
   "scripts": {
     "android": "react-native run-android",
@@ -17,6 +17,7 @@
     "jsonwebtoken": "^9.0.2",
     "react": "19.1.0",
     "react-native": "0.80.0",
+    "react-native-device-info": "^14.0.4",
     "react-native-fs": "^2.20.0",
     "react-native-linear-gradient": "^2.8.3",
     "react-native-permissions": "^4.1.5",
