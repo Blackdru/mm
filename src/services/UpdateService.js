@@ -7,7 +7,7 @@ const { ApkInstaller } = NativeModules;
 
 class UpdateService {
   constructor() {
-    this.currentVersion = '1.0.3'; 
+    this.currentVersion = '1.0.4'; 
     this.updateCheckUrl = `${config.SERVER_URL}/updates/latest-version.json`;
     this.maxRetries = 3;
   }
@@ -53,7 +53,7 @@ class UpdateService {
         headers: {
           'Accept': 'application/json',
           'Cache-Control': 'no-cache',
-          'User-Agent': 'Budzee-App/1.0.3'
+          'User-Agent': 'Budzee-App/1.0.4'
         },
         timeout: 10000 // 10 second timeout
       });

@@ -198,10 +198,10 @@ const AboutScreen = ({ navigation }) => {
           {/* Footer */}
           <View style={styles.footer}>
             <Text style={styles.footerText}>
-              Made with ❤️ in India for gaming enthusiasts worldwide
+              © 2024 Budzee Gaming. All rights reserved.
             </Text>
             <Text style={styles.copyright}>
-              © 2024 Budzee Gaming. All rights reserved.
+              Budrock Technologies Private Limited
             </Text>
           </View>
         </ScrollView>
